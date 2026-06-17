@@ -7,9 +7,9 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Final cleanup")
+st.caption("Voice-first • Corrected 60\" CL5 pricing")
 
-# ==================== PRICING ====================
+# ==================== PRICING (Updated) ====================
 PRICING = {
     315: {
         '18': {'CL3': Decimal('28.74'), 'CL4': Decimal('29.79'), 'CL5': Decimal('29.84')},
@@ -19,7 +19,7 @@ PRICING = {
         '42': {'CL3': Decimal('110.25'), 'CL4': Decimal('115.76'), 'CL5': Decimal('121.28')},
         '48': {'CL3': Decimal('137.81'), 'CL4': Decimal('144.70'), 'CL5': Decimal('151.59')},
         '54': {'CL3': Decimal('189.00'), 'CL4': Decimal('198.45'), 'CL5': Decimal('207.90')},
-        '60': {'CL3': Decimal('228.38'), 'CL4': Decimal('239.79'), 'CL5': Decimal('251.30')},
+        '60': {'CL3': Decimal('228.38'), 'CL4': Decimal('239.79'), 'CL5': Decimal('251.21')},  # ← Corrected
         '66': {'CL3': Decimal('271.69'), 'CL4': Decimal('285.27'), 'CL5': Decimal('298.86')},
         '72': {'CL3': Decimal('318.94'), 'CL4': Decimal('334.88'), 'CL5': Decimal('350.83')},
     },
@@ -123,21 +123,17 @@ if st.button("Generate Professional Quote", type="primary"):
     st.write("**Freight included in pipe price.**")
     st.write(f"**Total = ${total:,.2f}**")
 
-    # ==================== CLEAN PROJECT NAME EXTRACTION ====================
+    # Project name extraction
     project_name = "Project"
     text_original = voice_text.strip()
-    
-    # Best: Look specifically after "project name is"
-    match = re.search(r'project name is\s+(.+?)(?:\.|they need|priced at|all priced)', text_original, re.IGNORECASE)
+    match = re.search(r'project name is (.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
     if match:
         project_name = match.group(1).strip()
     else:
-        # Fallback: Look after "project is"
-        match = re.search(r'project is\s+(.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
+        match = re.search(r'project is (.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
         if match:
             project_name = match.group(1).strip()
 
-    # ==================== EMAIL ====================
     email = f"""Good afternoon,
 
 Please see pricing below for {project_name}:
