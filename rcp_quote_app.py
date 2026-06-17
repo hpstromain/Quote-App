@@ -7,12 +7,12 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Mobile optimized")
+st.caption("Voice-first • Class substitution rules applied")
 
-# ==================== PRICING ====================
+# ==================== PRICING (Updated) ====================
 PRICING = {
     315: {
-        '15': {'CL3': Decimal('23.50')},
+        '15': {'CL5': Decimal('23.50')},   # Placeholder - update if needed
         '18': {'CL3': Decimal('28.74'), 'CL4': Decimal('29.79'), 'CL5': Decimal('29.84')},
         '24': {'CL3': Decimal('44.89'), 'CL4': Decimal('47.13'), 'CL5': Decimal('49.38')},
         '30': {'CL3': Decimal('63.79'), 'CL4': Decimal('66.98'), 'CL5': Decimal('70.17')},
@@ -25,9 +25,9 @@ PRICING = {
         '72': {'CL3': Decimal('318.94'), 'CL4': Decimal('334.88'), 'CL5': Decimal('350.83')},
     },
     320: {
-        '15': {'CL3': Decimal('23.90')},
-        '18': {'CL3': Decimal('29.20'), 'CL4': Decimal('30.25'), 'CL5': Decimal('30.30')},
-        '24': {'CL3': Decimal('45.60'), 'CL4': Decimal('47.88'), 'CL5': Decimal('50.16')},
+        '15': {'CL5': Decimal('24.20')},   # ← Corrected
+        '18': {'CL3': Decimal('29.20'), 'CL5': Decimal('30.30')},  # CL4 removed
+        '24': {'CL3': Decimal('45.60'), 'CL5': Decimal('50.16')},  # CL4 removed
         '30': {'CL3': Decimal('64.80'), 'CL4': Decimal('68.04'), 'CL5': Decimal('71.28')},
         '36': {'CL3': Decimal('92.00'), 'CL4': Decimal('96.60'), 'CL5': Decimal('101.20')},
         '42': {'CL3': Decimal('112.00'), 'CL4': Decimal('117.60'), 'CL5': Decimal('123.20')},
@@ -95,6 +95,14 @@ with col1:
                     
                     cl_map = {"three": "3", "four": "4", "five": "5"}
                     cl = f"CL{cl_map.get(cl_raw, cl_raw)}"
+                    
+                    # === NEW CLASS SUBSTITUTION RULES ===
+                    if size == '15':
+                        cl = 'CL5'
+                    elif size == '18' and cl == 'CL4':
+                        cl = 'CL5'
+                    elif size == '24' and cl == 'CL4':
+                        cl = 'CL5'
                     
                     if size in PRICING.get(detected_ton, {}):
                         items.append({
