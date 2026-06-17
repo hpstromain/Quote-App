@@ -6,13 +6,12 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("📋 RCP Quote Assistant")
-st.caption("Mobile-friendly • Exact pricing from your spreadsheet")
+st.caption("Mobile-friendly pricing tool")
 
-# Initialize session state properly
+# Proper initialization
 if "items" not in st.session_state:
     st.session_state.items = []
 
-# Pricing data (you can expand this later)
 PRICING = {
     315: {
         '18': {'CL3': Decimal('28.74'), 'CL5': Decimal('29.84')},
@@ -29,12 +28,12 @@ PRICING = {
 ton_price = st.selectbox("Price per Ton ($)", [315, 320], index=0)
 
 st.subheader("Add Pipe")
-col1, col2, col3 = st.columns(3)
-with col1:
+c1, c2, c3 = st.columns(3)
+with c1:
     size = st.selectbox("Size", ["18", "24", "30"])
-with col2:
+with c2:
     cl = st.selectbox("Class", ["CL3", "CL5"])
-with col3:
+with c3:
     qty = st.number_input("Linear Feet", min_value=0, value=80, step=8)
 
 if st.button("➕ Add Pipe"):
@@ -43,8 +42,8 @@ if st.button("➕ Add Pipe"):
     })
 
 st.subheader("Current Items")
-for i, item in enumerate(st.session_state.items):
-    st.write(f"{i+1}. {item['qty']} LF {item['size']}\" {item['cl']}")
+for item in st.session_state.items:
+    st.write(f"• {item['qty']} LF {item['size']}\" {item['cl']}")
 
 if st.button("Clear All"):
     st.session_state.items = []
@@ -55,7 +54,6 @@ if st.button("Generate Quote", type="primary"):
     st.subheader("Quote")
     total = Decimal(0)
     lines = []
-    
     for item in st.session_state.items:
         price = PRICING[item["ton"]][item["size"]][item["cl"]]
         ext = Decimal(item["qty"]) * price
@@ -64,22 +62,5 @@ if st.button("Generate Quote", type="primary"):
     
     for line in lines:
         st.write(line)
-    
     st.write("---")
     st.write(f"**Total = ${total:,.2f}**")
-    
-    email_text = f"""Good morning [Customer],
-
-Please see the pricing below:
-
-"""
-    for line in lines:
-        email_text += line + "\n"
-    email_text += f"""
-Freight included.
-Total = ${total:,.2f}
-
-Thank you,
-Hayden St. Romain
-"""
-    st.text_area("Copy to Outlook:", value=email_text, height=280)
