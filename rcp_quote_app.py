@@ -152,18 +152,13 @@ st.divider()
 
 if st.button("Generate Professional Quote", type="primary"):
     st.subheader("Quote")
-
-    # ==================== REORDER ITEMS ====================
-    pipe_items = [item for item in items if item.get("type") == "pipe"]
-    flared_items = [item for item in items if item.get("type") == "Flared End"]
-
-    # Sort pipes by size (smallest → largest)
-    pipe_items.sort(key=lambda x: int(x["size"]))
-
     total = Decimal(0)
     lines = []
 
-    # 1. Add sorted Pipe + Gaskets
+    pipe_items = [item for item in items if item.get("type") == "pipe"]
+    flared_items = [item for item in items if item.get("type") == "Flared End"]
+    pipe_items.sort(key=lambda x: int(x["size"]))
+
     for item in pipe_items:
         price = PRICING[item["ton"]][item["size"]][item["cl"]]
         rounded = round_to_sticks(item["lf"])
@@ -175,13 +170,11 @@ if st.button("Generate Professional Quote", type="primary"):
         if gaskets > 0:
             lines.append(f"{gaskets} EA {item['size']}” Gaskets @ $0.00/EA = $0.00")
 
-    # 2. Add Flared Ends
     for item in flared_items:
         ext = Decimal(item["qty"]) * Decimal(item["price"])
         total += ext
         lines.append(f"{item['qty']} EA {item['size']}” FES @ ${item['price']}/EA = ${ext:,.2f}")
 
-    # 3. Add Joint Lube (simple placeholder for now)
     if pipe_items:
         lube_qty = max(1, len(pipe_items) // 2)
         lube_total = lube_qty * 60
@@ -195,7 +188,6 @@ if st.button("Generate Professional Quote", type="primary"):
     st.write("**Freight included in pipe price.**")
     st.write(f"**Total = ${total:,.2f}**")
 
-    # Project name
     project_name = "Project"
     text_original = st.session_state.voice_text.strip()
     match = re.search(r'project name\s+(?:is\s+)?(.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
@@ -206,7 +198,6 @@ if st.button("Generate Professional Quote", type="primary"):
         if match:
             project_name = match.group(1).strip()
 
-    # ==================== EMAIL (Correct Order) ====================
     email = f"""Good afternoon,
 
 Please see pricing below for {project_name}:
@@ -216,6 +207,9 @@ Please see pricing below for {project_name}:
         email += line + "\n"
 
     email += f"""
+Freight included in pipe price.
+Total = ${total:,.2f}
+
 Please let me know if you have any questions or concerns.
 
 Thank you,
