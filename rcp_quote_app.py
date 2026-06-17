@@ -7,7 +7,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Cleaner project name extraction")
+st.caption("Voice-first • Cleaner project name")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -126,18 +126,18 @@ if st.button("Generate Professional Quote", type="primary"):
     # ==================== CLEAN PROJECT NAME EXTRACTION ====================
     project_name = "Project"
     
-    # Try multiple common patterns
-    patterns = [
-        r'project(?: name)? is (.+?)(?:\.|they need|priced at|all priced)',
-        r'for (.+?) (?:project|expansion|trails|facilities)',
-        r'project (.+?) (?:they need|priced at)'
-    ]
+    # Try to extract a clean project name
+    text_clean = voice_text.strip()
     
-    for pattern in patterns:
-        match = re.search(pattern, voice_text, re.IGNORECASE)
+    # Pattern 1: "project name is XXX"
+    match = re.search(r'project(?: name)? is (.+?)(?:\.|they need|priced at|all priced)', text_clean, re.IGNORECASE)
+    if match:
+        project_name = match.group(1).strip()
+    else:
+        # Pattern 2: "for XXX project" or "for XXX expansion"
+        match = re.search(r'for (.+?) (?:project|expansion|trails|facilities|park)', text_clean, re.IGNORECASE)
         if match:
             project_name = match.group(1).strip()
-            break
 
     # ==================== EMAIL ====================
     email = f"""Good afternoon,
