@@ -7,12 +7,12 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Class substitution rules applied")
+st.caption("Voice-first • Improved project name + email format")
 
-# ==================== PRICING (Updated) ====================
+# ==================== PRICING ====================
 PRICING = {
     315: {
-        '15': {'CL5': Decimal('23.50')},   # Placeholder - update if needed
+        '15': {'CL5': Decimal('23.50')},
         '18': {'CL3': Decimal('28.74'), 'CL4': Decimal('29.79'), 'CL5': Decimal('29.84')},
         '24': {'CL3': Decimal('44.89'), 'CL4': Decimal('47.13'), 'CL5': Decimal('49.38')},
         '30': {'CL3': Decimal('63.79'), 'CL4': Decimal('66.98'), 'CL5': Decimal('70.17')},
@@ -25,9 +25,9 @@ PRICING = {
         '72': {'CL3': Decimal('318.94'), 'CL4': Decimal('334.88'), 'CL5': Decimal('350.83')},
     },
     320: {
-        '15': {'CL5': Decimal('24.20')},   # ← Corrected
-        '18': {'CL3': Decimal('29.20'), 'CL5': Decimal('30.30')},  # CL4 removed
-        '24': {'CL3': Decimal('45.60'), 'CL5': Decimal('50.16')},  # CL4 removed
+        '15': {'CL5': Decimal('24.20')},
+        '18': {'CL3': Decimal('29.20'), 'CL5': Decimal('30.30')},
+        '24': {'CL3': Decimal('45.60'), 'CL5': Decimal('50.16')},
         '30': {'CL3': Decimal('64.80'), 'CL4': Decimal('68.04'), 'CL5': Decimal('71.28')},
         '36': {'CL3': Decimal('92.00'), 'CL4': Decimal('96.60'), 'CL5': Decimal('101.20')},
         '42': {'CL3': Decimal('112.00'), 'CL4': Decimal('117.60'), 'CL5': Decimal('123.20')},
@@ -96,7 +96,6 @@ with col1:
                     cl_map = {"three": "3", "four": "4", "five": "5"}
                     cl = f"CL{cl_map.get(cl_raw, cl_raw)}"
                     
-                    # === NEW CLASS SUBSTITUTION RULES ===
                     if size == '15':
                         cl = 'CL5'
                     elif size == '18' and cl == 'CL4':
@@ -180,17 +179,23 @@ if st.button("Generate Professional Quote", type="primary"):
     st.write("**Freight included in pipe price.**")
     st.write(f"**Total = ${total:,.2f}**")
 
-    # Project name
+    # ==================== IMPROVED PROJECT NAME EXTRACTION ====================
     project_name = "Project"
     text_original = st.session_state.voice_text.strip()
-    match = re.search(r'project name is (.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
-    if match:
-        project_name = match.group(1).strip()
-    else:
-        match = re.search(r'project is (.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
+    
+    # Try multiple patterns
+    patterns = [
+        r'project name\s+(?:is\s+)?(.+?)(?:\.|they need|priced at|all priced)',
+        r'project\s+(?:is\s+)?(.+?)(?:\.|they need|priced at|all priced)',
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, text_original, re.IGNORECASE)
         if match:
             project_name = match.group(1).strip()
+            break
 
+    # ==================== EMAIL (Updated Format) ====================
     email = f"""Good afternoon,
 
 Please see pricing below for {project_name}:
