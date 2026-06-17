@@ -1,13 +1,14 @@
 import streamlit as st
-from decimal import Decimal, getcontext
+from decimal import Decimal, getcontext, ROUND_HALF_UP
 import re
+import math
 
 getcontext().prec = 28
 
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Consistent quote ordering")
+st.caption("Voice-first • Truckload-based Joint Lube")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -37,6 +38,13 @@ PRICING = {
         '66': {'CL3': Decimal('276.00'), 'CL4': Decimal('289.80'), 'CL5': Decimal('303.60')},
         '72': {'CL3': Decimal('324.00'), 'CL4': Decimal('340.20'), 'CL5': Decimal('356.40')},
     }
+}
+
+# Weight per linear foot (lbs)
+PIPE_WEIGHTS = {
+    '15': 155, '18': 175, '24': 290, '30': 410,
+    '36': 563, '42': 860, '48': 1055, '54': 1270,
+    '60': 1505, '66': 1755, '72': 2030, '84': 2655
 }
 
 FLARED_PRICES = {'15': 875, '18': 1030, '24': 1725, '30': 1895, '36': 2895, '42': 3895}
@@ -159,6 +167,31 @@ if st.button("Generate Professional Quote", type="primary"):
     flared_items = [item for item in items if item.get("type") == "Flared End"]
     pipe_items.sort(key=lambda x: int(x["size"]))
 
+    # === CALCULATE JOINT LUBE BASED ON TRUCKLOADS ===
+    if pipe_items:
+        total_pounds = Decimal(0)
+        for item in pipe_items:
+            weight_per_ft = PIPE_WEIGHTS.get(item["size"], 0)
+            total_pounds += Decimal(item["lf"]) * Decimal(weight_per_ft)
+        
+        total_tons = total_pounds / Decimal(2000)
+        truckloads = total_tons / Decimal(24)
+        
+        # Custom rounding: round up if over 0.5, round down if 0.5 or under
+        fractional = truckloads - truckloads.to_integral_value(rounding=ROUND_HALF_UP)
+        if fractional > Decimal('0.5'):
+            lube_buckets = math.ceil(float(truckloads))
+        else:
+            lube_buckets = math.floor(float(truckloads))
+        
+        if lube_buckets < 1:
+            lube_buckets = 1
+    else:
+        lube_buckets = 1  # Default if no pipe
+
+    lube_total = lube_buckets * 60
+
+    # Add Pipe + Gaskets (sorted)
     for item in pipe_items:
         price = PRICING[item["ton"]][item["size"]][item["cl"]]
         rounded = round_to_sticks(item["lf"])
@@ -170,16 +203,15 @@ if st.button("Generate Professional Quote", type="primary"):
         if gaskets > 0:
             lines.append(f"{gaskets} EA {item['size']}” Gaskets @ $0.00/EA = $0.00")
 
+    # Add Flared Ends
     for item in flared_items:
         ext = Decimal(item["qty"]) * Decimal(item["price"])
         total += ext
         lines.append(f"{item['qty']} EA {item['size']}” FES @ ${item['price']}/EA = ${ext:,.2f}")
 
-    if pipe_items:
-        lube_qty = max(1, len(pipe_items) // 2)
-        lube_total = lube_qty * 60
-        total += lube_total
-        lines.append(f"{lube_qty} EA 30lb Joint Lube @ $60.00/EA = ${lube_total:,.2f}")
+    # Add Joint Lube
+    total += Decimal(lube_total)
+    lines.append(f"{lube_buckets} EA 30lb Joint Lube @ $60.00/EA = ${lube_total:,.2f}")
 
     for line in lines:
         st.write(line)
