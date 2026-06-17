@@ -7,12 +7,12 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Improved natural speech parsing")
+st.caption("Voice-first • Stronger natural speech parsing")
 
 # ==================== PRICING ====================
 PRICING = {
     315: {
-        '15': {'CL3': Decimal('23.50')},   # Added
+        '15': {'CL3': Decimal('23.50')},
         '18': {'CL3': Decimal('28.74'), 'CL4': Decimal('29.79'), 'CL5': Decimal('29.84')},
         '24': {'CL3': Decimal('44.89'), 'CL4': Decimal('47.13'), 'CL5': Decimal('49.38')},
         '30': {'CL3': Decimal('63.79'), 'CL4': Decimal('66.98'), 'CL5': Decimal('70.17')},
@@ -25,7 +25,7 @@ PRICING = {
         '72': {'CL3': Decimal('318.94'), 'CL4': Decimal('334.88'), 'CL5': Decimal('350.83')},
     },
     320: {
-        '15': {'CL3': Decimal('23.90')},   # Added
+        '15': {'CL3': Decimal('23.90')},
         '18': {'CL3': Decimal('29.20'), 'CL4': Decimal('30.25'), 'CL5': Decimal('30.30')},
         '24': {'CL3': Decimal('45.60'), 'CL4': Decimal('47.88'), 'CL5': Decimal('50.16')},
         '30': {'CL3': Decimal('64.80'), 'CL4': Decimal('68.04'), 'CL5': Decimal('71.28')},
@@ -66,18 +66,20 @@ with col1:
             ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
             detected_ton = int(ton_match.group(1)) if ton_match else 315
             
-            # Convert spoken numbers (basic)
-            text = re.sub(r'(\d+)\s*hundred', lambda m: str(int(m.group(1)) * 100), text)
+            # Better spoken number conversion
+            text = re.sub(r'(\d+)\s*hundred(?:\s+and)?\s*(\d+)?', 
+                         lambda m: str(int(m.group(1)) * 100 + (int(m.group(2)) if m.group(2) else 0)), text)
             
             clauses = re.split(r'[.!?]+', text)
             
             for clause in clauses:
-                # Pipe
-                pipe_pattern = r'(\d+)\s*(?:feet|lf)?\s*of\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
+                # More flexible pipe pattern
+                pipe_pattern = r'(\d+)\s*(?:feet|lf|linear feet)?\s*of\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
                 for match in re.finditer(pipe_pattern, clause):
                     qty = int(match.group(1))
                     size = match.group(2)
                     cl_raw = match.group(3)
+                    
                     cl_map = {"three": "3", "four": "4", "five": "5"}
                     cl = f"CL{cl_map.get(cl_raw, cl_raw)}"
                     
@@ -88,8 +90,8 @@ with col1:
                         })
                         added += 1
                 
-                # Flared ends (improved)
-                flared_pattern = r'(?:one|1|each|)\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*inch\s*flared'
+                # Improved flared end detection
+                flared_pattern = r'(?:one|1)?\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*inch\s*(?:flared|flared end)'
                 flared_match = re.search(flared_pattern, clause)
                 if flared_match:
                     qty = int(flared_match.group(1)) if flared_match.group(1) else 1
