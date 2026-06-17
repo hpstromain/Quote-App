@@ -7,7 +7,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • More flexible natural speech parsing")
+st.caption("Voice-first • Better spoken number handling")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -66,14 +66,17 @@ with col1:
             ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
             detected_ton = int(ton_match.group(1)) if ton_match else 315
             
-            # Improved spoken number conversion
+            # Stronger spoken number conversion
             text = re.sub(r'(\d+)\s*hundred(?:\s+and)?\s*(\d+)?', 
                          lambda m: str(int(m.group(1))*100 + (int(m.group(2)) if m.group(2) else 0)), text)
+            
+            # Also handle standalone "hundred" cases
+            text = re.sub(r'(\d+)\s*hundred', lambda m: str(int(m.group(1))*100), text)
             
             clauses = re.split(r'[.!?]+', text)
             
             for clause in clauses:
-                # More flexible pipe pattern (makes "of" optional)
+                # Flexible pipe pattern (of is optional)
                 pipe_pattern = r'(\d+)\s*(?:feet|lf|linear feet)?\s*(?:of)?\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
                 for match in re.finditer(pipe_pattern, clause):
                     qty = int(match.group(1))
@@ -90,8 +93,8 @@ with col1:
                         })
                         added += 1
                 
-                # Improved flared end detection
-                flared_pattern = r'(?:one|1)?\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*inch\s*(?:flared|flared end|flared end section)'
+                # Flared end
+                flared_pattern = r'(?:one|1)?\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*inch\s*(?:flared|flared end)'
                 flared_match = re.search(flared_pattern, clause)
                 if flared_match:
                     qty = int(flared_match.group(1)) if flared_match.group(1) else 1
@@ -156,40 +159,4 @@ if st.button("Generate Professional Quote", type="primary"):
 
     st.write("---")
     st.write("**Freight included in pipe price.**")
-    st.write(f"**Total = ${total:,.2f}**")
-
-    # Project name
-    project_name = "Project"
-    text_original = voice_text.strip()
-    match = re.search(r'project name is (.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
-    if match:
-        project_name = match.group(1).strip()
-    else:
-        match = re.search(r'project is (.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
-        if match:
-            project_name = match.group(1).strip()
-
-    email = f"""Good afternoon,
-
-Please see pricing below for {project_name}:
-
-"""
-    for line in lines:
-        email += line + "\n"
-
-    email += f"""
-Please let me know if you have any questions or concerns.
-
-Thank you,
-
-Hayden St. Romain
-Account Manager
-C 678.814.3208
-148 Rock Quarry Rd
-Stockbridge, GA 30281
-RinkerPipe.com
-Hayden.st.romain@rinkerpipe.com
-"""
-
-    st.text_area("Generated Quote:", value=email, height=280)
-    st.code(email, language="text")
+    st.write(f"**Total = ${total:,.2f}
