@@ -7,7 +7,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Speak naturally")
+st.caption("Improved free parser • Natural speech")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -44,48 +44,52 @@ def round_to_sticks(lf):
     return lf if lf % 8 == 0 else ((lf // 8) + 1) * 8
 
 items = st.session_state.setdefault("items", [])
+learned_patterns = st.session_state.setdefault("learned_patterns", [])
 
-# ==================== IMPROVED VOICE INPUT ====================
-st.subheader("🎤 Speak Naturally Here")
+# ==================== IMPROVED VOICE PARSING ====================
+st.subheader("🎤 Speak Naturally (Voice-to-Text)")
 
 voice_text = st.text_area(
-    "Speak or type (use your phone's voice-to-text):",
+    "Speak or type your quote:",
     height=140,
     placeholder="Fortis Siteworks Sandersville Kaolin Park 424 feet of 18 inch class three, 144 feet of 24 inch class three at 310 per ton"
 )
 
 if st.button("Process Voice Input", type="primary"):
     text = voice_text.lower()
-    
     added = 0
     
-    # Detect ton price first
+    # 1. Detect ton price (anywhere in sentence)
     ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
     detected_ton = int(ton_match.group(1)) if ton_match else 315
     
-    # Much better pipe detection
-    # Looks for: number + (feet) + of + number + inch + class + (3/4/5/three/etc)
-    pipe_pattern = r'(\d+)\s*(?:feet|lf|linear feet)?\s*of\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
+    # 2. Flexible pipe detection (handles many variations)
+    pipe_patterns = [
+        r'(\d+)\s*(?:feet|lf|linear feet)?\s*of\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)',
+        r'(\d+)\s*(?:feet|lf)?\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)',
+    ]
     
-    for match in re.finditer(pipe_pattern, text):
-        qty = int(match.group(1))
-        size = match.group(2)
-        cl_raw = match.group(3)
-        
-        cl_map = {"three": "3", "four": "4", "five": "5"}
-        cl = f"CL{cl_map.get(cl_raw, cl_raw)}"
-        
-        if size in PRICING.get(detected_ton, {}):
-            items.append({
-                "type": "pipe",
-                "size": size,
-                "cl": cl,
-                "lf": qty,
-                "ton": detected_ton
-            })
-            added += 1
+    for pattern in pipe_patterns:
+        for match in re.finditer(pattern, text):
+            qty = int(match.group(1))
+            size = match.group(2)
+            cl_raw = match.group(3)
+            
+            cl_map = {"three": "3", "four": "4", "five": "5"}
+            cl = f"CL{cl_map.get(cl_raw, cl_raw)}"
+            
+            if size in PRICING.get(detected_ton, {}):
+                items.append({
+                    "type": "pipe",
+                    "size": size,
+                    "cl": cl,
+                    "lf": qty,
+                    "ton": detected_ton
+                })
+                added += 1
+                break  # avoid duplicates from overlapping patterns
     
-    # Detect flared ends
+    # 3. Detect flared / safety ends
     flared = re.search(r'(\d+)\s*(15|18|24|30|36|42)\s*inch\s*flared', text)
     if flared:
         items.append({
@@ -97,9 +101,12 @@ if st.button("Process Voice Input", type="primary"):
         added += 1
     
     if added > 0:
-        st.success(f"Successfully added {added} item(s)!")
+        st.success(f"Added {added} item(s) from voice input!")
+        # Simple learning: store successful ton price
+        if detected_ton not in learned_patterns:
+            learned_patterns.append(detected_ton)
     else:
-        st.warning("Still couldn't detect items. Try a simpler format like: '424 feet of 18 inch class three at 310 per ton'")
+        st.warning("Still couldn't detect items. Try a slightly simpler version of the sentence.")
 
 # ==================== CURRENT ITEMS ====================
 st.subheader("Current Items")
