@@ -7,7 +7,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Improved free parser • Natural speech")
+st.caption("Improved parser • Long quotes supported")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -44,69 +44,73 @@ def round_to_sticks(lf):
     return lf if lf % 8 == 0 else ((lf // 8) + 1) * 8
 
 items = st.session_state.setdefault("items", [])
-learned_patterns = st.session_state.setdefault("learned_patterns", [])
 
-# ==================== IMPROVED VOICE PARSING ====================
-st.subheader("🎤 Speak Naturally (Voice-to-Text)")
+# ==================== VOICE INPUT ====================
+st.subheader("🎤 Speak or Type Your Quote")
 
 voice_text = st.text_area(
-    "Speak or type your quote:",
-    height=140,
-    placeholder="Fortis Siteworks Sandersville Kaolin Park 424 feet of 18 inch class three, 144 feet of 24 inch class three at 310 per ton"
+    "Paste or speak the full quote here:",
+    height=160,
+    placeholder="This project is for flat iron... priced at $320 per ton"
 )
 
 if st.button("Process Voice Input", type="primary"):
     text = voice_text.lower()
-    added = 0
     
-    # 1. Detect ton price (anywhere in sentence)
-    ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
-    detected_ton = int(ton_match.group(1)) if ton_match else 315
-    
-    # 2. Flexible pipe detection (handles many variations)
-    pipe_patterns = [
-        r'(\d+)\s*(?:feet|lf|linear feet)?\s*of\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)',
-        r'(\d+)\s*(?:feet|lf)?\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)',
-    ]
-    
-    for pattern in pipe_patterns:
-        for match in re.finditer(pattern, text):
-            qty = int(match.group(1))
-            size = match.group(2)
-            cl_raw = match.group(3)
-            
-            cl_map = {"three": "3", "four": "4", "five": "5"}
-            cl = f"CL{cl_map.get(cl_raw, cl_raw)}"
-            
-            if size in PRICING.get(detected_ton, {}):
-                items.append({
-                    "type": "pipe",
-                    "size": size,
-                    "cl": cl,
-                    "lf": qty,
-                    "ton": detected_ton
-                })
-                added += 1
-                break  # avoid duplicates from overlapping patterns
-    
-    # 3. Detect flared / safety ends
-    flared = re.search(r'(\d+)\s*(15|18|24|30|36|42)\s*inch\s*flared', text)
-    if flared:
-        items.append({
-            "type": "Flared End",
-            "size": flared.group(2),
-            "qty": int(flared.group(1)),
-            "price": FLARED_PRICES.get(flared.group(2), 0)
-        })
-        added += 1
-    
-    if added > 0:
-        st.success(f"Added {added} item(s) from voice input!")
-        # Simple learning: store successful ton price
-        if detected_ton not in learned_patterns:
-            learned_patterns.append(detected_ton)
+    # Prevent duplicate processing of the same text
+    if st.session_state.get("last_processed_text") == text:
+        st.info("This text was already processed.")
     else:
-        st.warning("Still couldn't detect items. Try a slightly simpler version of the sentence.")
+        st.session_state.last_processed_text = text
+        added = 0
+        
+        # Detect ton price anywhere
+        ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
+        detected_ton = int(ton_match.group(1)) if ton_match else 315
+        
+        # Split long text into sentences/clauses for better parsing
+        clauses = re.split(r'[.!?]+', text)
+        
+        for clause in clauses:
+            clause = clause.strip()
+            if not clause:
+                continue
+                
+            # Pipe detection (improved)
+            pipe_pattern = r'(\d+)\s*(?:feet|lf|linear feet)?\s*of\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
+            for match in re.finditer(pipe_pattern, clause):
+                qty = int(match.group(1))
+                size = match.group(2)
+                cl_raw = match.group(3)
+                
+                cl_map = {"three": "3", "four": "4", "five": "5"}
+                cl = f"CL{cl_map.get(cl_raw, cl_raw)}"
+                
+                if size in PRICING.get(detected_ton, {}):
+                    items.append({
+                        "type": "pipe",
+                        "size": size,
+                        "cl": cl,
+                        "lf": qty,
+                        "ton": detected_ton
+                    })
+                    added += 1
+        
+        # Flared ends
+        flared = re.search(r'(\d+)\s*(15|18|24|30|36|42)\s*inch\s*flared', text)
+        if flared:
+            items.append({
+                "type": "Flared End",
+                "size": flared.group(2),
+                "qty": int(flared.group(1)),
+                "price": FLARED_PRICES.get(flared.group(2), 0)
+            })
+            added += 1
+        
+        if added > 0:
+            st.success(f"Added {added} item(s)!")
+        else:
+            st.warning("No items detected. Try breaking very long quotes into smaller parts.")
 
 # ==================== CURRENT ITEMS ====================
 st.subheader("Current Items")
@@ -118,6 +122,7 @@ for item in items:
 
 if st.button("Clear All"):
     st.session_state.items = []
+    st.session_state.last_processed_text = ""
 
 st.divider()
 
