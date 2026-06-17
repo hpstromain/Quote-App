@@ -6,9 +6,10 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("📋 RCP Quote Assistant")
-st.caption("Full prototype • Mobile optimized")
 
-# ==================== PRICING DATA ====================
+# Safe initialization
+items = st.session_state.setdefault("items", [])
+
 PRICING = {
     315: {
         '18': {'CL3': Decimal('28.74'), 'CL4': Decimal('29.79'), 'CL5': Decimal('29.84')},
@@ -55,9 +56,6 @@ SAFETY_PRICES = {
 def round_to_sticks(lf):
     return lf if lf % 8 == 0 else ((lf // 8) + 1) * 8
 
-if "items" not in st.session_state:
-    st.session_state.items = []
-
 ton_price = st.selectbox("Price per Ton ($)", [315, 320], index=0)
 
 st.subheader("Add RCP Pipe")
@@ -70,9 +68,7 @@ with col3:
     lf = st.number_input("Linear Feet", min_value=0, value=80, step=8)
 
 if st.button("➕ Add Pipe"):
-    st.session_state.items.append({
-        "type": "pipe", "size": size, "cl": cl, "lf": lf, "ton": ton_price
-    })
+    items.append({"type": "pipe", "size": size, "cl": cl, "lf": lf, "ton": ton_price})
 
 st.subheader("Add Flared or Safety Ends")
 end_type = st.selectbox("Type", ["Flared End", "Safety End"])
@@ -81,7 +77,7 @@ end_size = st.selectbox("Size", list(end_prices.keys()))
 end_qty = st.number_input("Quantity", min_value=1, value=1)
 
 if st.button(f"➕ Add {end_type}"):
-    st.session_state.items.append({
+    items.append({
         "type": end_type,
         "size": end_size,
         "qty": end_qty,
@@ -89,7 +85,7 @@ if st.button(f"➕ Add {end_type}"):
     })
 
 st.subheader("Current Items")
-for item in st.session_state.items:
+for item in items:
     if item["type"] == "pipe":
         st.write(f"• {item['lf']} LF {item['size']}\" {item['cl']}")
     else:
@@ -106,7 +102,7 @@ if st.button("Generate Professional Quote", type="primary"):
     lines = []
     gasket_lines = []
 
-    for item in st.session_state.items:
+    for item in items:
         if item["type"] == "pipe":
             price = PRICING[item["ton"]][item["size"]][item["cl"]]
             rounded = round_to_sticks(item["lf"])
