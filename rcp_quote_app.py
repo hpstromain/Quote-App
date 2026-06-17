@@ -7,9 +7,9 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Corrected 60\" CL5 pricing")
+st.caption("Voice-first • Mobile optimized")
 
-# ==================== PRICING (Updated) ====================
+# ==================== PRICING ====================
 PRICING = {
     315: {
         '18': {'CL3': Decimal('28.74'), 'CL4': Decimal('29.79'), 'CL5': Decimal('29.84')},
@@ -19,7 +19,7 @@ PRICING = {
         '42': {'CL3': Decimal('110.25'), 'CL4': Decimal('115.76'), 'CL5': Decimal('121.28')},
         '48': {'CL3': Decimal('137.81'), 'CL4': Decimal('144.70'), 'CL5': Decimal('151.59')},
         '54': {'CL3': Decimal('189.00'), 'CL4': Decimal('198.45'), 'CL5': Decimal('207.90')},
-        '60': {'CL3': Decimal('228.38'), 'CL4': Decimal('239.79'), 'CL5': Decimal('251.21')},  # ← Corrected
+        '60': {'CL3': Decimal('228.38'), 'CL4': Decimal('239.79'), 'CL5': Decimal('251.21')},
         '66': {'CL3': Decimal('271.69'), 'CL4': Decimal('285.27'), 'CL5': Decimal('298.86')},
         '72': {'CL3': Decimal('318.94'), 'CL4': Decimal('334.88'), 'CL5': Decimal('350.83')},
     },
@@ -45,10 +45,19 @@ def round_to_sticks(lf):
 
 items = st.session_state.setdefault("items", [])
 
-# ==================== VOICE INPUT ====================
-st.subheader("🎤 Speak or Type Quote")
+# ==================== VOICE INPUT + NEW QUOTE BUTTON ====================
+col1, col2 = st.columns([3, 1])
 
-voice_text = st.text_area("Speak naturally:", height=140)
+with col1:
+    st.subheader("🎤 Speak or Type Quote")
+    voice_text = st.text_area("Speak naturally:", height=120)
+
+with col2:
+    st.write("")  # spacing
+    if st.button("🆕 New Quote", use_container_width=True):
+        st.session_state.items = []
+        st.session_state.last_voice_text = ""
+        st.rerun()
 
 if st.button("Process Voice Input", type="primary"):
     text = voice_text.lower().replace(",", "")
@@ -123,7 +132,7 @@ if st.button("Generate Professional Quote", type="primary"):
     st.write("**Freight included in pipe price.**")
     st.write(f"**Total = ${total:,.2f}**")
 
-    # Project name extraction
+    # Project name
     project_name = "Project"
     text_original = voice_text.strip()
     match = re.search(r'project name is (.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
@@ -134,6 +143,7 @@ if st.button("Generate Professional Quote", type="primary"):
         if match:
             project_name = match.group(1).strip()
 
+    # ==================== EMAIL + COPY BUTTON ====================
     email = f"""Good afternoon,
 
 Please see pricing below for {project_name}:
@@ -155,4 +165,8 @@ Stockbridge, GA 30281
 RinkerPipe.com
 Hayden.st.romain@rinkerpipe.com
 """
-    st.text_area("Copy this into Outlook:", value=email, height=320)
+
+    st.text_area("Generated Quote (copy below):", value=email, height=280)
+
+    # Copy button using st.code (has native copy icon)
+    st.code(email, language="text")
