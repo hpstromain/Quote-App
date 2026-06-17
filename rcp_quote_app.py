@@ -67,7 +67,7 @@ col1, col2 = st.columns([3, 1])
 
 with col1:
     if st.button("Process Voice Input", type="primary", use_container_width=True):
-        current_text = st.session_state.voice_text.strip()
+        current_text = st.session_state.get("voice_input", "").strip()
         
         if not current_text:
             st.warning("Please enter some text first.")
