@@ -7,7 +7,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Final project name cleanup")
+st.caption("Voice-first • Final cleanup")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -127,13 +127,13 @@ if st.button("Generate Professional Quote", type="primary"):
     project_name = "Project"
     text_original = voice_text.strip()
     
-    # Best pattern: "project name is XXX"
-    match = re.search(r'project name is (.+?)(?:\.|they need|priced at|all priced)', text_original, re.IGNORECASE)
+    # Best: Look specifically after "project name is"
+    match = re.search(r'project name is\s+(.+?)(?:\.|they need|priced at|all priced)', text_original, re.IGNORECASE)
     if match:
         project_name = match.group(1).strip()
     else:
-        # Second best: "project is XXX"
-        match = re.search(r'project is (.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
+        # Fallback: Look after "project is"
+        match = re.search(r'project is\s+(.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
         if match:
             project_name = match.group(1).strip()
 
