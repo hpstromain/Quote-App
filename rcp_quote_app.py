@@ -7,9 +7,9 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Mobile optimized • Full features")
+st.caption("Voice-first • Correct email format")
 
-# ==================== COMPLETE PRICING DATA ====================
+# ==================== PRICING ====================
 PRICING = {
     315: {
         '18': {'CL3': Decimal('28.74'), 'CL4': Decimal('29.79'), 'CL5': Decimal('29.84')},
@@ -48,17 +48,13 @@ items = st.session_state.setdefault("items", [])
 # ==================== VOICE INPUT ====================
 st.subheader("🎤 Speak or Type Quote")
 
-voice_text = st.text_area(
-    "Speak naturally (use your phone's voice-to-text):",
-    height=140,
-    placeholder="Fortis Siteworks Sandersville Kaolin Park 424 feet of 18 inch class three at 310 per ton"
-)
+voice_text = st.text_area("Speak naturally:", height=140)
 
 if st.button("Process Voice Input", type="primary"):
     text = voice_text.lower().replace(",", "")
     
     if st.session_state.get("last_voice_text") == text:
-        st.info("This text was already processed.")
+        st.info("Already processed.")
     else:
         st.session_state.last_voice_text = text
         added = 0
@@ -104,9 +100,10 @@ st.divider()
 
 if st.button("Generate Professional Quote", type="primary"):
     st.subheader("Quote")
+    
     total = Decimal(0)
     lines = []
-    gasket_lines = []
+    joint_lube_buckets = 0
 
     for item in items:
         if item.get("type") == "pipe":
@@ -114,30 +111,38 @@ if st.button("Generate Professional Quote", type="primary"):
             rounded = round_to_sticks(item["lf"])
             ext = Decimal(rounded) * price
             total += ext
+            
+            # Add pipe line
             lines.append(f"{rounded} LF {item['size']}” RCP {item['cl']} @ ${price}/LF = ${ext:,.2f}")
             
+            # Add gasket immediately under the pipe
             gaskets = rounded // 8
             if gaskets > 0:
-                gasket_lines.append(f"{gaskets} EA {item['size']}” Gaskets @ $0.00/EA = $0.00")
+                lines.append(f"{gaskets} EA {item['size']}” Gaskets @ $0.00/EA = $0.00")
+            
+            joint_lube_buckets += 1  # rough estimate for now
+
+    # Add Joint Lube at the end
+    if joint_lube_buckets > 0:
+        lube_qty = max(1, joint_lube_buckets // 2)  # simple logic
+        lube_total = lube_qty * 60
+        total += lube_total
+        lines.append(f"{lube_qty} EA 30lb Joint Lube @ $60.00/EA = ${lube_total:,.2f}")
 
     for line in lines:
-        st.write(line)
-    for line in gasket_lines:
         st.write(line)
 
     st.write("---")
     st.write("**Freight included in pipe price.**")
     st.write(f"**Total = ${total:,.2f}**")
 
-    # ==================== EMAIL FORMAT ====================
+    # ==================== CORRECT EMAIL FORMAT ====================
     email = f"""Good afternoon,
 
 Please see pricing below for [Project Name]:
 
 """
     for line in lines:
-        email += line + "\n"
-    for line in gasket_lines:
         email += line + "\n"
 
     email += f"""
