@@ -7,7 +7,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Correct email format")
+st.caption("Voice-first • Project name extraction + Stronger parsing")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -48,7 +48,11 @@ items = st.session_state.setdefault("items", [])
 # ==================== VOICE INPUT ====================
 st.subheader("🎤 Speak or Type Quote")
 
-voice_text = st.text_area("Speak naturally:", height=140)
+voice_text = st.text_area(
+    "Speak naturally:",
+    height=140,
+    placeholder="Fortis Siteworks Sandersville Kaolin Park 424 feet of 18 inch class three at 310 per ton"
+)
 
 if st.button("Process Voice Input", type="primary"):
     text = voice_text.lower().replace(",", "")
@@ -59,13 +63,16 @@ if st.button("Process Voice Input", type="primary"):
         st.session_state.last_voice_text = text
         added = 0
         
+        # Detect ton price anywhere
         ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
         detected_ton = int(ton_match.group(1)) if ton_match else 315
         
+        # ==================== IMPROVED PARSING ====================
         clauses = re.split(r'[.!?]+', text)
         
         for clause in clauses:
-            pipe_pattern = r'(\d+)\s*(?:feet|lf)?\s*of\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
+            # Pipe detection (stronger pattern)
+            pipe_pattern = r'(\d+)\s*(?:feet|lf|linear feet)?\s*of\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
             for match in re.finditer(pipe_pattern, clause):
                 qty = int(match.group(1))
                 size = match.group(2)
@@ -100,10 +107,9 @@ st.divider()
 
 if st.button("Generate Professional Quote", type="primary"):
     st.subheader("Quote")
-    
     total = Decimal(0)
     lines = []
-    joint_lube_buckets = 0
+    gasket_lines = []
 
     for item in items:
         if item.get("type") == "pipe":
@@ -111,23 +117,11 @@ if st.button("Generate Professional Quote", type="primary"):
             rounded = round_to_sticks(item["lf"])
             ext = Decimal(rounded) * price
             total += ext
-            
-            # Add pipe line
             lines.append(f"{rounded} LF {item['size']}” RCP {item['cl']} @ ${price}/LF = ${ext:,.2f}")
             
-            # Add gasket immediately under the pipe
             gaskets = rounded // 8
             if gaskets > 0:
                 lines.append(f"{gaskets} EA {item['size']}” Gaskets @ $0.00/EA = $0.00")
-            
-            joint_lube_buckets += 1  # rough estimate for now
-
-    # Add Joint Lube at the end
-    if joint_lube_buckets > 0:
-        lube_qty = max(1, joint_lube_buckets // 2)  # simple logic
-        lube_total = lube_qty * 60
-        total += lube_total
-        lines.append(f"{lube_qty} EA 30lb Joint Lube @ $60.00/EA = ${lube_total:,.2f}")
 
     for line in lines:
         st.write(line)
@@ -136,10 +130,16 @@ if st.button("Generate Professional Quote", type="primary"):
     st.write("**Freight included in pipe price.**")
     st.write(f"**Total = ${total:,.2f}**")
 
-    # ==================== CORRECT EMAIL FORMAT ====================
+    # ==================== PROJECT NAME EXTRACTION ====================
+    project_name = "Project"
+    project_match = re.search(r'project(?: name)? is (.+?)(?:\.|$|they need|priced at)', voice_text, re.IGNORECASE)
+    if project_match:
+        project_name = project_match.group(1).strip()
+
+    # ==================== EMAIL ====================
     email = f"""Good afternoon,
 
-Please see pricing below for [Project Name]:
+Please see pricing below for {project_name}:
 
 """
     for line in lines:
