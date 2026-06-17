@@ -45,55 +45,56 @@ def round_to_sticks(lf):
 
 items = st.session_state.setdefault("items", [])
 
-# ==================== VOICE INPUT + NEW QUOTE BUTTON ====================
+# ==================== VOICE INPUT ====================
+st.subheader("🎤 Speak or Type Quote")
+
+voice_text = st.text_area("Speak naturally:", height=120)
+
+# Buttons side by side
 col1, col2 = st.columns([3, 1])
 
 with col1:
-    st.subheader("🎤 Speak or Type Quote")
-    voice_text = st.text_area("Speak naturally:", height=120)
+    if st.button("Process Voice Input", type="primary", use_container_width=True):
+        text = voice_text.lower().replace(",", "")
+        
+        if st.session_state.get("last_voice_text") == text:
+            st.info("Already processed.")
+        else:
+            st.session_state.last_voice_text = text
+            added = 0
+            
+            ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
+            detected_ton = int(ton_match.group(1)) if ton_match else 315
+            
+            clauses = re.split(r'[.!?]+', text)
+            
+            for clause in clauses:
+                pipe_pattern = r'(\d+)\s*(?:feet|lf)?\s*of\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
+                for match in re.finditer(pipe_pattern, clause):
+                    qty = int(match.group(1))
+                    size = match.group(2)
+                    cl_raw = match.group(3)
+                    
+                    cl_map = {"three": "3", "four": "4", "five": "5"}
+                    cl = f"CL{cl_map.get(cl_raw, cl_raw)}"
+                    
+                    if size in PRICING.get(detected_ton, {}):
+                        items.append({
+                            "type": "pipe", "size": size, "cl": cl, 
+                            "lf": qty, "ton": detected_ton
+                        })
+                        added += 1
+            
+            if added > 0:
+                st.success(f"Added {added} item(s)")
+            else:
+                st.warning("No items detected.")
 
 with col2:
-    st.write("")  # spacing
     if st.button("🆕 New Quote", use_container_width=True):
         st.session_state.items = []
         st.session_state.last_voice_text = ""
         st.rerun()
-
-if st.button("Process Voice Input", type="primary"):
-    text = voice_text.lower().replace(",", "")
-    
-    if st.session_state.get("last_voice_text") == text:
-        st.info("Already processed.")
-    else:
-        st.session_state.last_voice_text = text
-        added = 0
-        
-        ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
-        detected_ton = int(ton_match.group(1)) if ton_match else 315
-        
-        clauses = re.split(r'[.!?]+', text)
-        
-        for clause in clauses:
-            pipe_pattern = r'(\d+)\s*(?:feet|lf)?\s*of\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
-            for match in re.finditer(pipe_pattern, clause):
-                qty = int(match.group(1))
-                size = match.group(2)
-                cl_raw = match.group(3)
-                
-                cl_map = {"three": "3", "four": "4", "five": "5"}
-                cl = f"CL{cl_map.get(cl_raw, cl_raw)}"
-                
-                if size in PRICING.get(detected_ton, {}):
-                    items.append({
-                        "type": "pipe", "size": size, "cl": cl, 
-                        "lf": qty, "ton": detected_ton
-                    })
-                    added += 1
-        
-        if added > 0:
-            st.success(f"Added {added} item(s)")
-        else:
-            st.warning("No items detected.")
 
 # ==================== CURRENT ITEMS ====================
 st.subheader("Current Items")
@@ -143,7 +144,6 @@ if st.button("Generate Professional Quote", type="primary"):
         if match:
             project_name = match.group(1).strip()
 
-    # ==================== EMAIL + COPY BUTTON ====================
     email = f"""Good afternoon,
 
 Please see pricing below for {project_name}:
@@ -166,7 +166,5 @@ RinkerPipe.com
 Hayden.st.romain@rinkerpipe.com
 """
 
-    st.text_area("Generated Quote (copy below):", value=email, height=280)
-
-    # Copy button using st.code (has native copy icon)
-    st.code(email, language="text")
+    st.text_area("Generated Quote:", value=email, height=280)
+    st.code(email, language="text")   # Copy button
