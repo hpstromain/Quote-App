@@ -7,10 +7,25 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Improved parser • Long quotes + no duplication")
+st.caption("Voice-first • Mobile optimized • Full features")
 
-# ==================== FULL PRICING DATA ====================
+# ==================== EXPANDED PRICING ====================
 PRICING = {
+    300: {
+        '18': {'CL3': Decimal('27.60'), 'CL5': Decimal('28.48')},
+        '24': {'CL3': Decimal('43.10'), 'CL5': Decimal('47.03')},
+        '30': {'CL3': Decimal('61.20'), 'CL5': Decimal('67.32')},
+    },
+    305: {
+        '18': {'CL3': Decimal('28.02'), 'CL5': Decimal('28.93')},
+        '24': {'CL3': Decimal('43.85'), 'CL5': Decimal('47.81')},
+        '30': {'CL3': Decimal('62.25'), 'CL5': Decimal('68.42')},
+    },
+    310: {
+        '18': {'CL3': Decimal('28.45'), 'CL5': Decimal('29.39')},
+        '24': {'CL3': Decimal('44.60'), 'CL5': Decimal('48.59')},
+        '30': {'CL3': Decimal('63.30'), 'CL5': Decimal('69.52')},
+    },
     315: {
         '18': {'CL3': Decimal('28.74'), 'CL4': Decimal('29.79'), 'CL5': Decimal('29.84')},
         '24': {'CL3': Decimal('44.89'), 'CL4': Decimal('47.13'), 'CL5': Decimal('49.38')},
@@ -22,6 +37,7 @@ PRICING = {
         '60': {'CL3': Decimal('228.38'), 'CL4': Decimal('239.79'), 'CL5': Decimal('251.30')},
         '66': {'CL3': Decimal('271.69'), 'CL4': Decimal('285.27'), 'CL5': Decimal('298.86')},
         '72': {'CL3': Decimal('318.94'), 'CL4': Decimal('334.88'), 'CL5': Decimal('350.83')},
+        '84': {'CL3': Decimal('413.44'), 'CL4': Decimal('434.11'), 'CL5': Decimal('454.78')},
     },
     320: {
         '18': {'CL3': Decimal('29.20'), 'CL4': Decimal('30.25'), 'CL5': Decimal('30.30')},
@@ -34,6 +50,12 @@ PRICING = {
         '60': {'CL3': Decimal('232.00'), 'CL4': Decimal('243.60'), 'CL5': Decimal('255.20')},
         '66': {'CL3': Decimal('276.00'), 'CL4': Decimal('289.80'), 'CL5': Decimal('303.60')},
         '72': {'CL3': Decimal('324.00'), 'CL4': Decimal('340.20'), 'CL5': Decimal('356.40')},
+        '84': {'CL3': Decimal('420.00'), 'CL4': Decimal('441.00'), 'CL5': Decimal('462.00')},
+    },
+    325: {
+        '18': {'CL3': Decimal('29.66'), 'CL5': Decimal('30.76')},
+        '24': {'CL3': Decimal('46.31'), 'CL5': Decimal('50.94')},
+        '30': {'CL3': Decimal('65.81'), 'CL5': Decimal('72.39')},
     }
 }
 
@@ -46,16 +68,19 @@ def round_to_sticks(lf):
 items = st.session_state.setdefault("items", [])
 
 # ==================== VOICE INPUT ====================
-st.subheader("🎤 Speak or Paste Quote Here")
+st.subheader("🎤 Speak or Type Quote")
 
-voice_text = st.text_area("Full quote text:", height=160)
+voice_text = st.text_area(
+    "Speak naturally (customer + project + quantities + price):",
+    height=140,
+    placeholder="Fortis Siteworks Sandersville Kaolin Park 424 feet of 18 inch class three at 310 per ton"
+)
 
 if st.button("Process Voice Input", type="primary"):
-    text = voice_text.lower().replace(",", "")   # Remove commas from big numbers
+    text = voice_text.lower().replace(",", "")
     
-    # Prevent processing the same text twice
     if st.session_state.get("last_voice_text") == text:
-        st.info("This text was already processed.")
+        st.info("Already processed this text.")
     else:
         st.session_state.last_voice_text = text
         added = 0
@@ -64,7 +89,7 @@ if st.button("Process Voice Input", type="primary"):
         ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
         detected_ton = int(ton_match.group(1)) if ton_match else 315
         
-        # Split long text into clauses
+        # Split into clauses
         clauses = re.split(r'[.!?]+', text)
         
         for clause in clauses:
@@ -80,11 +105,8 @@ if st.button("Process Voice Input", type="primary"):
                 
                 if size in PRICING.get(detected_ton, {}):
                     items.append({
-                        "type": "pipe",
-                        "size": size,
-                        "cl": cl,
-                        "lf": qty,
-                        "ton": detected_ton
+                        "type": "pipe", "size": size, "cl": cl, 
+                        "lf": qty, "ton": detected_ton
                     })
                     added += 1
         
