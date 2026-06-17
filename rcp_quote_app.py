@@ -7,10 +7,35 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Improved email format")
+st.caption("Voice-first • Mobile optimized • Full features")
 
-# ==================== PRICING ====================
-PRICING = { ... (keep your full pricing data) ... }
+# ==================== COMPLETE PRICING DATA ====================
+PRICING = {
+    315: {
+        '18': {'CL3': Decimal('28.74'), 'CL4': Decimal('29.79'), 'CL5': Decimal('29.84')},
+        '24': {'CL3': Decimal('44.89'), 'CL4': Decimal('47.13'), 'CL5': Decimal('49.38')},
+        '30': {'CL3': Decimal('63.79'), 'CL4': Decimal('66.98'), 'CL5': Decimal('70.17')},
+        '36': {'CL3': Decimal('90.56'), 'CL4': Decimal('95.09'), 'CL5': Decimal('99.62')},
+        '42': {'CL3': Decimal('110.25'), 'CL4': Decimal('115.76'), 'CL5': Decimal('121.28')},
+        '48': {'CL3': Decimal('137.81'), 'CL4': Decimal('144.70'), 'CL5': Decimal('151.59')},
+        '54': {'CL3': Decimal('189.00'), 'CL4': Decimal('198.45'), 'CL5': Decimal('207.90')},
+        '60': {'CL3': Decimal('228.38'), 'CL4': Decimal('239.79'), 'CL5': Decimal('251.30')},
+        '66': {'CL3': Decimal('271.69'), 'CL4': Decimal('285.27'), 'CL5': Decimal('298.86')},
+        '72': {'CL3': Decimal('318.94'), 'CL4': Decimal('334.88'), 'CL5': Decimal('350.83')},
+    },
+    320: {
+        '18': {'CL3': Decimal('29.20'), 'CL4': Decimal('30.25'), 'CL5': Decimal('30.30')},
+        '24': {'CL3': Decimal('45.60'), 'CL4': Decimal('47.88'), 'CL5': Decimal('50.16')},
+        '30': {'CL3': Decimal('64.80'), 'CL4': Decimal('68.04'), 'CL5': Decimal('71.28')},
+        '36': {'CL3': Decimal('92.00'), 'CL4': Decimal('96.60'), 'CL5': Decimal('101.20')},
+        '42': {'CL3': Decimal('112.00'), 'CL4': Decimal('117.60'), 'CL5': Decimal('123.20')},
+        '48': {'CL3': Decimal('140.00'), 'CL4': Decimal('147.00'), 'CL5': Decimal('154.00')},
+        '54': {'CL3': Decimal('192.00'), 'CL4': Decimal('201.60'), 'CL5': Decimal('211.20')},
+        '60': {'CL3': Decimal('232.00'), 'CL4': Decimal('243.60'), 'CL5': Decimal('255.20')},
+        '66': {'CL3': Decimal('276.00'), 'CL4': Decimal('289.80'), 'CL5': Decimal('303.60')},
+        '72': {'CL3': Decimal('324.00'), 'CL4': Decimal('340.20'), 'CL5': Decimal('356.40')},
+    }
+}
 
 FLARED_PRICES = {'15': 875, '18': 1030, '24': 1725, '30': 1895, '36': 2895, '42': 3895}
 SAFETY_PRICES = {'15': 1360, '18': 1495, '24': 2670, '30': 4360}
@@ -23,13 +48,17 @@ items = st.session_state.setdefault("items", [])
 # ==================== VOICE INPUT ====================
 st.subheader("🎤 Speak or Type Quote")
 
-voice_text = st.text_area("Speak naturally:", height=140)
+voice_text = st.text_area(
+    "Speak naturally (use your phone's voice-to-text):",
+    height=140,
+    placeholder="Fortis Siteworks Sandersville Kaolin Park 424 feet of 18 inch class three at 310 per ton"
+)
 
 if st.button("Process Voice Input", type="primary"):
     text = voice_text.lower().replace(",", "")
     
     if st.session_state.get("last_voice_text") == text:
-        st.info("Already processed.")
+        st.info("This text was already processed.")
     else:
         st.session_state.last_voice_text = text
         added = 0
@@ -45,6 +74,7 @@ if st.button("Process Voice Input", type="primary"):
                 qty = int(match.group(1))
                 size = match.group(2)
                 cl_raw = match.group(3)
+                
                 cl_map = {"three": "3", "four": "4", "five": "5"}
                 cl = f"CL{cl_map.get(cl_raw, cl_raw)}"
                 
@@ -77,7 +107,6 @@ if st.button("Generate Professional Quote", type="primary"):
     total = Decimal(0)
     lines = []
     gasket_lines = []
-    joint_lube_buckets = 0
 
     for item in items:
         if item.get("type") == "pipe":
@@ -90,23 +119,6 @@ if st.button("Generate Professional Quote", type="primary"):
             gaskets = rounded // 8
             if gaskets > 0:
                 gasket_lines.append(f"{gaskets} EA {item['size']}” Gaskets @ $0.00/EA = $0.00")
-        
-        elif item.get("type") == "Flared End":
-            ext = Decimal(item["qty"]) * Decimal(item["price"])
-            total += ext
-            lines.append(f"{item['qty']} EA {item['size']}” FES @ ${item['price']}/EA = ${ext:,.2f}")
-        
-        elif item.get("type") == "Safety End":
-            ext = Decimal(item["qty"]) * Decimal(item["price"])
-            total += ext
-            lines.append(f"{item['qty']} EA {item['size']}” Safety End @ ${item['price']}/EA = ${ext:,.2f}")
-
-    # Simple joint lube placeholder (we can improve later)
-    if items:
-        joint_lube_buckets = max(1, len([i for i in items if i.get("type") == "pipe"]) // 3)
-        lube_total = joint_lube_buckets * 60
-        total += lube_total
-        lines.append(f"{joint_lube_buckets} EA 30lb Joint Lube @ $60.00/EA = ${lube_total:,.2f}")
 
     for line in lines:
         st.write(line)
@@ -117,7 +129,7 @@ if st.button("Generate Professional Quote", type="primary"):
     st.write("**Freight included in pipe price.**")
     st.write(f"**Total = ${total:,.2f}**")
 
-    # ==================== IMPROVED EMAIL FORMAT ====================
+    # ==================== EMAIL FORMAT ====================
     email = f"""Good afternoon,
 
 Please see pricing below for [Project Name]:
