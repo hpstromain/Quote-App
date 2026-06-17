@@ -7,7 +7,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Improved project name + email format")
+st.caption("Voice-first • Mobile optimized")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -179,23 +179,18 @@ if st.button("Generate Professional Quote", type="primary"):
     st.write("**Freight included in pipe price.**")
     st.write(f"**Total = ${total:,.2f}**")
 
-    # ==================== IMPROVED PROJECT NAME EXTRACTION ====================
+    # Project name
     project_name = "Project"
     text_original = st.session_state.voice_text.strip()
-    
-    # Try multiple patterns
-    patterns = [
-        r'project name\s+(?:is\s+)?(.+?)(?:\.|they need|priced at|all priced)',
-        r'project\s+(?:is\s+)?(.+?)(?:\.|they need|priced at|all priced)',
-    ]
-    
-    for pattern in patterns:
-        match = re.search(pattern, text_original, re.IGNORECASE)
+    match = re.search(r'project name\s+(?:is\s+)?(.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
+    if match:
+        project_name = match.group(1).strip()
+    else:
+        match = re.search(r'project\s+(?:is\s+)?(.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
         if match:
             project_name = match.group(1).strip()
-            break
 
-    # ==================== EMAIL (Updated Format) ====================
+    # ==================== EMAIL (Correct Format) ====================
     email = f"""Good afternoon,
 
 Please see pricing below for {project_name}:
@@ -205,6 +200,9 @@ Please see pricing below for {project_name}:
         email += line + "\n"
 
     email += f"""
+Freight included in pipe price.
+Total = ${total:,.2f}
+
 Please let me know if you have any questions or concerns.
 
 Thank you,
