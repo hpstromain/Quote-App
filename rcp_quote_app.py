@@ -206,8 +206,7 @@ Please see pricing below for {project_name}:
     for line in lines:
         email += line + "\n"
 
-    email += f"""
-Freight included in pipe price.
+    email += f"""Freight included in pipe price.
 Total = ${total:,.2f}
 
 Please let me know if you have any questions or concerns.
