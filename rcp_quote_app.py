@@ -5,11 +5,10 @@ getcontext().prec = 28
 
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
-st.title("📋 RCP Quote Assistant")
+st.title("RCP Quote Assistant")
 
-# This is the safest way to initialize
-if "items" not in st.session_state:
-    st.session_state.items = []
+# Safe initialization using setdefault
+items = st.session_state.setdefault("items", [])
 
 PRICING = {
     315: {
@@ -36,10 +35,10 @@ with col3:
     qty = st.number_input("Linear Feet", min_value=0, value=80, step=8)
 
 if st.button("Add Pipe"):
-    st.session_state.items.append({"size": size, "cl": cl, "qty": qty, "ton": ton_price})
+    items.append({"size": size, "cl": cl, "qty": qty, "ton": ton_price})
 
 st.subheader("Current Items")
-for item in st.session_state.items:
+for item in items:
     st.write(f"• {item['qty']} LF {item['size']}\" {item['cl']}")
 
 if st.button("Clear All"):
@@ -51,7 +50,7 @@ if st.button("Generate Quote", type="primary"):
     st.subheader("Quote")
     total = Decimal(0)
     lines = []
-    for item in st.session_state.items:
+    for item in items:
         price = PRICING[item["ton"]][item["size"]][item["cl"]]
         ext = Decimal(item["qty"]) * price
         total += ext
