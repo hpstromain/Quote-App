@@ -1,15 +1,15 @@
 import streamlit as st
 from decimal import Decimal, getcontext
+import re
 
 getcontext().prec = 28
 
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
-st.title("📋 RCP Quote Assistant")
+st.title("🎤 RCP Quote Assistant")
+st.caption("Voice-first prototype • Speak naturally")
 
-# Safe initialization
-items = st.session_state.setdefault("items", [])
-
+# ==================== PRICING ====================
 PRICING = {
     315: {
         '18': {'CL3': Decimal('28.74'), 'CL4': Decimal('29.79'), 'CL5': Decimal('29.84')},
@@ -37,72 +37,83 @@ PRICING = {
     }
 }
 
-FLARED_PRICES = {
-    '15': Decimal('875'),
-    '18': Decimal('1030'),
-    '24': Decimal('1725'),
-    '30': Decimal('1895'),
-    '36': Decimal('2895'),
-    '42': Decimal('3895')
-}
-
-SAFETY_PRICES = {
-    '15': Decimal('1360'),
-    '18': Decimal('1495'),
-    '24': Decimal('2670'),
-    '30': Decimal('4360')
-}
+FLARED_PRICES = {'15': 875, '18': 1030, '24': 1725, '30': 1895, '36': 2895, '42': 3895}
+SAFETY_PRICES = {'15': 1360, '18': 1495, '24': 2670, '30': 4360}
 
 def round_to_sticks(lf):
     return lf if lf % 8 == 0 else ((lf // 8) + 1) * 8
 
-ton_price = st.selectbox("Price per Ton ($)", [315, 320], index=0)
-
-st.subheader("Add RCP Pipe")
-col1, col2, col3 = st.columns(3)
-with col1:
-    size = st.selectbox("Size (inch)", list(PRICING[ton_price].keys()))
-with col2:
-    cl = st.selectbox("Class", list(PRICING[ton_price][size].keys()))
-with col3:
-    lf = st.number_input("Linear Feet", min_value=0, value=80, step=8)
-
-if st.button("➕ Add Pipe"):
-    items.append({"type": "pipe", "size": size, "cl": cl, "lf": lf, "ton": ton_price})
-
-st.subheader("Add Flared or Safety Ends")
-end_type = st.selectbox("Type", ["Flared End", "Safety End"])
-end_prices = FLARED_PRICES if end_type == "Flared End" else SAFETY_PRICES
-end_size = st.selectbox("Size", list(end_prices.keys()))
-end_qty = st.number_input("Quantity", min_value=1, value=1)
-
-if st.button(f"➕ Add {end_type}"):
-    items.append({
-        "type": end_type,
-        "size": end_size,
-        "qty": end_qty,
-        "price": end_prices[end_size]
-    })
-
-st.subheader("Current Items")
-for item in items:
-    if item["type"] == "pipe":
-        st.write(f"• {item['lf']} LF {item['size']}\" {item['cl']}")
-    else:
-        st.write(f"• {item['qty']} EA {item['size']}\" {item['type']}")
-
-if st.button("Clear All"):
+if "items" not in st.session_state:
     st.session_state.items = []
+
+# ==================== VOICE / NATURAL LANGUAGE INPUT ====================
+st.subheader("🎤 Speak or Type Here")
+
+voice_input = st.text_area(
+    "Speak naturally (tap the microphone on your phone keyboard):",
+    height=100,
+    placeholder="Example: Customer Alliance Group, project Hamilton Road, 272 feet of 18 inch class three, 488 feet of 24 inch class three at 315 per ton"
+)
+
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("Process Voice Input", type="primary"):
+        text = voice_input.lower()
+        
+        # Simple parsing (we can make this smarter later)
+        # Detect ton price
+        ton_match = re.search(r'(\d{3})\s*(per ton|dollars per ton|ton)', text)
+        ton_price = int(ton_match.group(1)) if ton_match else 315
+        
+        # Detect pipe quantities (very basic regex)
+        pipe_matches = re.findall(r'(\d+)\s*(feet|lf|linear feet)?\s*of\s*(\d+)\s*inch\s*(class\s*([345]))?', text)
+        
+        for match in pipe_matches:
+            qty = int(match[0])
+            size = match[2]
+            cl = f"CL{match[4]}" if match[4] else "CL3"
+            
+            if size in PRICING.get(ton_price, {}):
+                st.session_state.items.append({
+                    "type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": ton_price
+                })
+        
+        # Detect flared ends
+        flared_match = re.search(r'(\d+)\s*(18|24|30|36|42)\s*inch\s*flared', text)
+        if flared_match:
+            qty = int(flared_match.group(1))
+            size = flared_match.group(2)
+            st.session_state.items.append({
+                "type": "Flared End", "size": size, "qty": qty, "price": FLARED_PRICES.get(size, 0)
+            })
+        
+        st.success("Voice input processed! Items added below.")
+
+with col2:
+    if st.button("Clear All Items"):
+        st.session_state.items = []
+
+# ==================== CURRENT ITEMS ====================
+st.subheader("Current Items")
+if st.session_state.items:
+    for item in st.session_state.items:
+        if item["type"] == "pipe":
+            st.write(f"• {item['lf']} LF {item['size']}\" {item['cl']} @ {item['ton']}/ton")
+        else:
+            st.write(f"• {item['qty']} EA {item['size']}\" {item['type']}")
+else:
+    st.info("No items yet. Speak or type above.")
 
 st.divider()
 
+# ==================== GENERATE QUOTE ====================
 if st.button("Generate Professional Quote", type="primary"):
     st.subheader("Quote")
     total = Decimal(0)
     lines = []
     gasket_lines = []
 
-    for item in items:
+    for item in st.session_state.items:
         if item["type"] == "pipe":
             price = PRICING[item["ton"]][item["size"]][item["cl"]]
             rounded = round_to_sticks(item["lf"])
@@ -114,7 +125,7 @@ if st.button("Generate Professional Quote", type="primary"):
             if gaskets > 0:
                 gasket_lines.append(f"{gaskets} EA {item['size']}\" Gaskets @ $0.00 = $0.00")
         else:
-            ext = Decimal(item["qty"]) * item["price"]
+            ext = Decimal(item["qty"]) * Decimal(item["price"])
             total += ext
             lines.append(f"{item['qty']} EA {item['size']}\" {item['type']} @ ${item['price']} = ${ext:,.2f}")
 
@@ -141,4 +152,4 @@ Thank you,
 Hayden St. Romain
 Account Manager | C 678.814.3208
 """
-    st.text_area("Copy this into Outlook:", value=email, height=320)
+    st.text_area("Copy this into Outlook:", value=email, height=300)
