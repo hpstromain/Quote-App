@@ -7,7 +7,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Mobile optimized")
+st.caption("Voice-first • Consistent quote ordering")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -152,25 +152,41 @@ st.divider()
 
 if st.button("Generate Professional Quote", type="primary"):
     st.subheader("Quote")
+
+    # ==================== REORDER ITEMS ====================
+    pipe_items = [item for item in items if item.get("type") == "pipe"]
+    flared_items = [item for item in items if item.get("type") == "Flared End"]
+
+    # Sort pipes by size (smallest → largest)
+    pipe_items.sort(key=lambda x: int(x["size"]))
+
     total = Decimal(0)
     lines = []
 
-    for item in items:
-        if item.get("type") == "pipe":
-            price = PRICING[item["ton"]][item["size"]][item["cl"]]
-            rounded = round_to_sticks(item["lf"])
-            ext = Decimal(rounded) * price
-            total += ext
-            lines.append(f"{rounded} LF {item['size']}” RCP {item['cl']} @ ${price}/LF = ${ext:,.2f}")
-            
-            gaskets = rounded // 8
-            if gaskets > 0:
-                lines.append(f"{gaskets} EA {item['size']}” Gaskets @ $0.00/EA = $0.00")
+    # 1. Add sorted Pipe + Gaskets
+    for item in pipe_items:
+        price = PRICING[item["ton"]][item["size"]][item["cl"]]
+        rounded = round_to_sticks(item["lf"])
+        ext = Decimal(rounded) * price
+        total += ext
+        lines.append(f"{rounded} LF {item['size']}” RCP {item['cl']} @ ${price}/LF = ${ext:,.2f}")
         
-        elif item.get("type") == "Flared End":
-            ext = Decimal(item["qty"]) * Decimal(item["price"])
-            total += ext
-            lines.append(f"{item['qty']} EA {item['size']}” FES @ ${item['price']}/EA = ${ext:,.2f}")
+        gaskets = rounded // 8
+        if gaskets > 0:
+            lines.append(f"{gaskets} EA {item['size']}” Gaskets @ $0.00/EA = $0.00")
+
+    # 2. Add Flared Ends
+    for item in flared_items:
+        ext = Decimal(item["qty"]) * Decimal(item["price"])
+        total += ext
+        lines.append(f"{item['qty']} EA {item['size']}” FES @ ${item['price']}/EA = ${ext:,.2f}")
+
+    # 3. Add Joint Lube (simple placeholder for now)
+    if pipe_items:
+        lube_qty = max(1, len(pipe_items) // 2)
+        lube_total = lube_qty * 60
+        total += lube_total
+        lines.append(f"{lube_qty} EA 30lb Joint Lube @ $60.00/EA = ${lube_total:,.2f}")
 
     for line in lines:
         st.write(line)
@@ -190,7 +206,7 @@ if st.button("Generate Professional Quote", type="primary"):
         if match:
             project_name = match.group(1).strip()
 
-    # ==================== EMAIL (Correct Format) ====================
+    # ==================== EMAIL (Correct Order) ====================
     email = f"""Good afternoon,
 
 Please see pricing below for {project_name}:
@@ -200,9 +216,6 @@ Please see pricing below for {project_name}:
         email += line + "\n"
 
     email += f"""
-Freight included in pipe price.
-Total = ${total:,.2f}
-
 Please let me know if you have any questions or concerns.
 
 Thank you,
