@@ -7,7 +7,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Project name extraction + Stronger parsing")
+st.caption("Voice-first • Cleaner project name extraction")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -48,11 +48,7 @@ items = st.session_state.setdefault("items", [])
 # ==================== VOICE INPUT ====================
 st.subheader("🎤 Speak or Type Quote")
 
-voice_text = st.text_area(
-    "Speak naturally:",
-    height=140,
-    placeholder="Fortis Siteworks Sandersville Kaolin Park 424 feet of 18 inch class three at 310 per ton"
-)
+voice_text = st.text_area("Speak naturally:", height=140)
 
 if st.button("Process Voice Input", type="primary"):
     text = voice_text.lower().replace(",", "")
@@ -63,16 +59,13 @@ if st.button("Process Voice Input", type="primary"):
         st.session_state.last_voice_text = text
         added = 0
         
-        # Detect ton price anywhere
         ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
         detected_ton = int(ton_match.group(1)) if ton_match else 315
         
-        # ==================== IMPROVED PARSING ====================
         clauses = re.split(r'[.!?]+', text)
         
         for clause in clauses:
-            # Pipe detection (stronger pattern)
-            pipe_pattern = r'(\d+)\s*(?:feet|lf|linear feet)?\s*of\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
+            pipe_pattern = r'(\d+)\s*(?:feet|lf)?\s*of\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
             for match in re.finditer(pipe_pattern, clause):
                 qty = int(match.group(1))
                 size = match.group(2)
@@ -130,11 +123,21 @@ if st.button("Generate Professional Quote", type="primary"):
     st.write("**Freight included in pipe price.**")
     st.write(f"**Total = ${total:,.2f}**")
 
-    # ==================== PROJECT NAME EXTRACTION ====================
+    # ==================== CLEAN PROJECT NAME EXTRACTION ====================
     project_name = "Project"
-    project_match = re.search(r'project(?: name)? is (.+?)(?:\.|$|they need|priced at)', voice_text, re.IGNORECASE)
-    if project_match:
-        project_name = project_match.group(1).strip()
+    
+    # Try multiple common patterns
+    patterns = [
+        r'project(?: name)? is (.+?)(?:\.|they need|priced at|all priced)',
+        r'for (.+?) (?:project|expansion|trails|facilities)',
+        r'project (.+?) (?:they need|priced at)'
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, voice_text, re.IGNORECASE)
+        if match:
+            project_name = match.group(1).strip()
+            break
 
     # ==================== EMAIL ====================
     email = f"""Good afternoon,
