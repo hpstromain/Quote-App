@@ -43,66 +43,53 @@ SAFETY_PRICES = {'15': 1360, '18': 1495, '24': 2670, '30': 4360}
 def round_to_sticks(lf):
     return lf if lf % 8 == 0 else ((lf // 8) + 1) * 8
 
-if "items" not in st.session_state:
-    st.session_state.items = []
+# Safe initialization + local variable
+items = st.session_state.setdefault("items", [])
 
-# ==================== VOICE / NATURAL LANGUAGE INPUT ====================
-st.subheader("🎤 Speak or Type Here")
+# ==================== VOICE INPUT ====================
+st.subheader("🎤 Speak or Type (Voice-to-Text)")
 
 voice_input = st.text_area(
-    "Speak naturally (tap the microphone on your phone keyboard):",
-    height=100,
-    placeholder="Example: Customer Alliance Group, project Hamilton Road, 272 feet of 18 inch class three, 488 feet of 24 inch class three at 315 per ton"
+    "Speak naturally using your phone's microphone:",
+    height=120,
+    placeholder="Example: Customer Alliance Group project Hamilton Road 272 feet of 18 inch class three 488 feet of 24 inch class three at 315 per ton"
 )
 
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("Process Voice Input", type="primary"):
-        text = voice_input.lower()
-        
-        # Simple parsing (we can make this smarter later)
-        # Detect ton price
-        ton_match = re.search(r'(\d{3})\s*(per ton|dollars per ton|ton)', text)
-        ton_price = int(ton_match.group(1)) if ton_match else 315
-        
-        # Detect pipe quantities (very basic regex)
-        pipe_matches = re.findall(r'(\d+)\s*(feet|lf|linear feet)?\s*of\s*(\d+)\s*inch\s*(class\s*([345]))?', text)
-        
-        for match in pipe_matches:
-            qty = int(match[0])
-            size = match[2]
-            cl = f"CL{match[4]}" if match[4] else "CL3"
-            
-            if size in PRICING.get(ton_price, {}):
-                st.session_state.items.append({
-                    "type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": ton_price
-                })
-        
-        # Detect flared ends
-        flared_match = re.search(r'(\d+)\s*(18|24|30|36|42)\s*inch\s*flared', text)
-        if flared_match:
-            qty = int(flared_match.group(1))
-            size = flared_match.group(2)
-            st.session_state.items.append({
-                "type": "Flared End", "size": size, "qty": qty, "price": FLARED_PRICES.get(size, 0)
-            })
-        
-        st.success("Voice input processed! Items added below.")
-
-with col2:
-    if st.button("Clear All Items"):
-        st.session_state.items = []
+if st.button("Process Voice Input", type="primary"):
+    text = voice_input.lower()
+    
+    # Detect ton price
+    ton_match = re.search(r'(\d{3})\s*(per ton|dollars per ton|ton)', text)
+    ton_price = int(ton_match.group(1)) if ton_match else 315
+    
+    # Detect pipe
+    pipe_matches = re.findall(r'(\d+)\s*(feet|lf)?\s*of\s*(\d+)\s*inch\s*(class\s*([345]))?', text)
+    for match in pipe_matches:
+        qty = int(match[0])
+        size = match[2]
+        cl = f"CL{match[4]}" if match[4] else "CL3"
+        if size in PRICING.get(ton_price, {}):
+            items.append({"type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": ton_price})
+    
+    # Detect flared ends (basic)
+    flared_match = re.search(r'(\d+)\s*(18|24|30|36|42)\s*inch\s*flared', text)
+    if flared_match:
+        qty = int(flared_match.group(1))
+        size = flared_match.group(2)
+        items.append({"type": "Flared End", "size": size, "qty": qty, "price": FLARED_PRICES.get(size, 0)})
+    
+    st.success("Voice input processed!")
 
 # ==================== CURRENT ITEMS ====================
 st.subheader("Current Items")
-if st.session_state.items:
-    for item in st.session_state.items:
-        if item["type"] == "pipe":
-            st.write(f"• {item['lf']} LF {item['size']}\" {item['cl']} @ {item['ton']}/ton")
-        else:
-            st.write(f"• {item['qty']} EA {item['size']}\" {item['type']}")
-else:
-    st.info("No items yet. Speak or type above.")
+for item in items:
+    if item["type"] == "pipe":
+        st.write(f"• {item['lf']} LF {item['size']}\" {item['cl']}")
+    else:
+        st.write(f"• {item['qty']} EA {item['size']}\" {item['type']}")
+
+if st.button("Clear All"):
+    st.session_state.items = []
 
 st.divider()
 
@@ -113,7 +100,7 @@ if st.button("Generate Professional Quote", type="primary"):
     lines = []
     gasket_lines = []
 
-    for item in st.session_state.items:
+    for item in items:
         if item["type"] == "pipe":
             price = PRICING[item["ton"]][item["size"]][item["cl"]]
             rounded = round_to_sticks(item["lf"])
