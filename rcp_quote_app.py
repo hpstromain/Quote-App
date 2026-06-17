@@ -7,11 +7,12 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Mobile optimized")
+st.caption("Voice-first • Improved natural speech parsing")
 
 # ==================== PRICING ====================
 PRICING = {
     315: {
+        '15': {'CL3': Decimal('23.50')},   # Added
         '18': {'CL3': Decimal('28.74'), 'CL4': Decimal('29.79'), 'CL5': Decimal('29.84')},
         '24': {'CL3': Decimal('44.89'), 'CL4': Decimal('47.13'), 'CL5': Decimal('49.38')},
         '30': {'CL3': Decimal('63.79'), 'CL4': Decimal('66.98'), 'CL5': Decimal('70.17')},
@@ -24,6 +25,7 @@ PRICING = {
         '72': {'CL3': Decimal('318.94'), 'CL4': Decimal('334.88'), 'CL5': Decimal('350.83')},
     },
     320: {
+        '15': {'CL3': Decimal('23.90')},   # Added
         '18': {'CL3': Decimal('29.20'), 'CL4': Decimal('30.25'), 'CL5': Decimal('30.30')},
         '24': {'CL3': Decimal('45.60'), 'CL4': Decimal('47.88'), 'CL5': Decimal('50.16')},
         '30': {'CL3': Decimal('64.80'), 'CL4': Decimal('68.04'), 'CL5': Decimal('71.28')},
@@ -50,9 +52,7 @@ st.subheader("🎤 Speak or Type Quote")
 
 voice_text = st.text_area("Speak naturally:", height=120)
 
-# Buttons side by side
 col1, col2 = st.columns([3, 1])
-
 with col1:
     if st.button("Process Voice Input", type="primary", use_container_width=True):
         text = voice_text.lower().replace(",", "")
@@ -66,15 +66,18 @@ with col1:
             ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
             detected_ton = int(ton_match.group(1)) if ton_match else 315
             
+            # Convert spoken numbers (basic)
+            text = re.sub(r'(\d+)\s*hundred', lambda m: str(int(m.group(1)) * 100), text)
+            
             clauses = re.split(r'[.!?]+', text)
             
             for clause in clauses:
+                # Pipe
                 pipe_pattern = r'(\d+)\s*(?:feet|lf)?\s*of\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
                 for match in re.finditer(pipe_pattern, clause):
                     qty = int(match.group(1))
                     size = match.group(2)
                     cl_raw = match.group(3)
-                    
                     cl_map = {"three": "3", "four": "4", "five": "5"}
                     cl = f"CL{cl_map.get(cl_raw, cl_raw)}"
                     
@@ -84,6 +87,20 @@ with col1:
                             "lf": qty, "ton": detected_ton
                         })
                         added += 1
+                
+                # Flared ends (improved)
+                flared_pattern = r'(?:one|1|each|)\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*inch\s*flared'
+                flared_match = re.search(flared_pattern, clause)
+                if flared_match:
+                    qty = int(flared_match.group(1)) if flared_match.group(1) else 1
+                    size = flared_match.group(2)
+                    items.append({
+                        "type": "Flared End",
+                        "size": size,
+                        "qty": qty,
+                        "price": FLARED_PRICES.get(size, 0)
+                    })
+                    added += 1
             
             if added > 0:
                 st.success(f"Added {added} item(s)")
@@ -96,11 +113,13 @@ with col2:
         st.session_state.last_voice_text = ""
         st.rerun()
 
-# ==================== CURRENT ITEMS ====================
+# ==================== CURRENT ITEMS + QUOTE ====================
 st.subheader("Current Items")
 for item in items:
     if item.get("type") == "pipe":
         st.write(f"• {item['lf']} LF {item['size']}\" {item['cl']} @ {item['ton']}/ton")
+    else:
+        st.write(f"• {item['qty']} EA {item['size']}\" {item['type']}")
 
 if st.button("Clear All"):
     st.session_state.items = []
@@ -112,7 +131,6 @@ if st.button("Generate Professional Quote", type="primary"):
     st.subheader("Quote")
     total = Decimal(0)
     lines = []
-    gasket_lines = []
 
     for item in items:
         if item.get("type") == "pipe":
@@ -125,6 +143,11 @@ if st.button("Generate Professional Quote", type="primary"):
             gaskets = rounded // 8
             if gaskets > 0:
                 lines.append(f"{gaskets} EA {item['size']}” Gaskets @ $0.00/EA = $0.00")
+        
+        elif item.get("type") == "Flared End":
+            ext = Decimal(item["qty"]) * Decimal(item["price"])
+            total += ext
+            lines.append(f"{item['qty']} EA {item['size']}” FES @ ${item['price']}/EA = ${ext:,.2f}")
 
     for line in lines:
         st.write(line)
@@ -167,4 +190,4 @@ Hayden.st.romain@rinkerpipe.com
 """
 
     st.text_area("Generated Quote:", value=email, height=280)
-    st.code(email, language="text")   # Copy button
+    st.code(email, language="text")
