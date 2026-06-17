@@ -7,9 +7,9 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first prototype • Speak naturally")
+st.caption("Voice-first • Speak naturally")
 
-# ==================== FULL PRICING DATA ====================
+# ==================== PRICING ====================
 PRICING = {
     315: {
         '18': {'CL3': Decimal('28.74'), 'CL4': Decimal('29.79'), 'CL5': Decimal('29.84')},
@@ -45,40 +45,47 @@ def round_to_sticks(lf):
 
 items = st.session_state.setdefault("items", [])
 
-# ==================== VOICE INPUT ====================
-st.subheader("🎤 Speak or Type Here")
+# ==================== IMPROVED VOICE INPUT ====================
+st.subheader("🎤 Speak Naturally Here")
 
 voice_text = st.text_area(
-    "Speak naturally (use your phone's voice-to-text):",
+    "Speak or type (use your phone's voice-to-text):",
     height=140,
-    placeholder="Example: Fortis Siteworks Sandersville Kaolin Park 424 feet of 18 inch class three 144 feet of 24 inch class three at 310 per ton"
+    placeholder="Fortis Siteworks Sandersville Kaolin Park 424 feet of 18 inch class three, 144 feet of 24 inch class three at 310 per ton"
 )
 
 if st.button("Process Voice Input", type="primary"):
     text = voice_text.lower()
     
-    # Detect ton price
+    added = 0
+    
+    # Detect ton price first
     ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
     detected_ton = int(ton_match.group(1)) if ton_match else 315
     
-    added = 0
+    # Much better pipe detection
+    # Looks for: number + (feet) + of + number + inch + class + (3/4/5/three/etc)
+    pipe_pattern = r'(\d+)\s*(?:feet|lf|linear feet)?\s*of\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
     
-    # Pipe detection
-    pipe_pattern = r'(\d+)\s*(feet|lf)?\s*of\s*(\d+)\s*inch\s*(class\s*([345]|three|four|five))?'
     for match in re.finditer(pipe_pattern, text):
         qty = int(match.group(1))
-        size = match.group(3)
-        cl_raw = match.group(5) or "3"
+        size = match.group(2)
+        cl_raw = match.group(3)
+        
         cl_map = {"three": "3", "four": "4", "five": "5"}
         cl = f"CL{cl_map.get(cl_raw, cl_raw)}"
         
         if size in PRICING.get(detected_ton, {}):
             items.append({
-                "type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": detected_ton
+                "type": "pipe",
+                "size": size,
+                "cl": cl,
+                "lf": qty,
+                "ton": detected_ton
             })
             added += 1
     
-    # Flared ends detection
+    # Detect flared ends
     flared = re.search(r'(\d+)\s*(15|18|24|30|36|42)\s*inch\s*flared', text)
     if flared:
         items.append({
@@ -90,16 +97,16 @@ if st.button("Process Voice Input", type="primary"):
         added += 1
     
     if added > 0:
-        st.success(f"Added {added} item(s)!")
+        st.success(f"Successfully added {added} item(s)!")
     else:
-        st.warning("No items detected. Try: '424 feet of 18 inch class three at 310 per ton'")
+        st.warning("Still couldn't detect items. Try a simpler format like: '424 feet of 18 inch class three at 310 per ton'")
 
 # ==================== CURRENT ITEMS ====================
 st.subheader("Current Items")
 for item in items:
     if item.get("type") == "pipe":
         st.write(f"• {item['lf']} LF {item['size']}\" {item['cl']} @ {item['ton']}/ton")
-    elif item.get("type"):
+    else:
         st.write(f"• {item['qty']} EA {item['size']}\" {item['type']}")
 
 if st.button("Clear All"):
@@ -107,7 +114,6 @@ if st.button("Clear All"):
 
 st.divider()
 
-# ==================== GENERATE QUOTE ====================
 if st.button("Generate Professional Quote", type="primary"):
     st.subheader("Quote")
     total = Decimal(0)
