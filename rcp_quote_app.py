@@ -37,4 +37,112 @@ PRICING = {
 }
 
 FLARED_PRICES = {
-    '15': Decimal('875'), '18': Decimal('1030'), '24': Decimal('1725
+    '15': Decimal('875'),
+    '18': Decimal('1030'),
+    '24': Decimal('1725'),
+    '30': Decimal('1895'),
+    '36': Decimal('2895'),
+    '42': Decimal('3895')
+}
+
+SAFETY_PRICES = {
+    '15': Decimal('1360'),
+    '18': Decimal('1495'),
+    '24': Decimal('2670'),
+    '30': Decimal('4360')
+}
+
+def round_to_sticks(lf):
+    return lf if lf % 8 == 0 else ((lf // 8) + 1) * 8
+
+if "items" not in st.session_state:
+    st.session_state.items = []
+
+ton_price = st.selectbox("Price per Ton ($)", [315, 320], index=0)
+
+st.subheader("Add RCP Pipe")
+col1, col2, col3 = st.columns(3)
+with col1:
+    size = st.selectbox("Size (inch)", list(PRICING[ton_price].keys()))
+with col2:
+    cl = st.selectbox("Class", list(PRICING[ton_price][size].keys()))
+with col3:
+    lf = st.number_input("Linear Feet", min_value=0, value=80, step=8)
+
+if st.button("➕ Add Pipe"):
+    st.session_state.items.append({
+        "type": "pipe", "size": size, "cl": cl, "lf": lf, "ton": ton_price
+    })
+
+st.subheader("Add Flared or Safety Ends")
+end_type = st.selectbox("Type", ["Flared End", "Safety End"])
+end_prices = FLARED_PRICES if end_type == "Flared End" else SAFETY_PRICES
+end_size = st.selectbox("Size", list(end_prices.keys()))
+end_qty = st.number_input("Quantity", min_value=1, value=1)
+
+if st.button(f"➕ Add {end_type}"):
+    st.session_state.items.append({
+        "type": end_type,
+        "size": end_size,
+        "qty": end_qty,
+        "price": end_prices[end_size]
+    })
+
+st.subheader("Current Items")
+for item in st.session_state.items:
+    if item["type"] == "pipe":
+        st.write(f"• {item['lf']} LF {item['size']}\" {item['cl']}")
+    else:
+        st.write(f"• {item['qty']} EA {item['size']}\" {item['type']}")
+
+if st.button("Clear All"):
+    st.session_state.items = []
+
+st.divider()
+
+if st.button("Generate Professional Quote", type="primary"):
+    st.subheader("Quote")
+    total = Decimal(0)
+    lines = []
+    gasket_lines = []
+
+    for item in st.session_state.items:
+        if item["type"] == "pipe":
+            price = PRICING[item["ton"]][item["size"]][item["cl"]]
+            rounded = round_to_sticks(item["lf"])
+            ext = Decimal(rounded) * price
+            total += ext
+            lines.append(f"{rounded} LF {item['size']}\" {item['cl']} @ ${price}/LF = ${ext:,.2f}")
+            
+            gaskets = rounded // 8
+            if gaskets > 0:
+                gasket_lines.append(f"{gaskets} EA {item['size']}\" Gaskets @ $0.00 = $0.00")
+        else:
+            ext = Decimal(item["qty"]) * item["price"]
+            total += ext
+            lines.append(f"{item['qty']} EA {item['size']}\" {item['type']} @ ${item['price']} = ${ext:,.2f}")
+
+    for line in lines:
+        st.write(line)
+    for line in gasket_lines:
+        st.write(line)
+
+    st.write("---")
+    st.write(f"**Total = ${total:,.2f}**")
+
+    email = f"""Good morning [Customer],
+
+Please see the pricing below for the project:
+
+"""
+    for line in lines + gasket_lines:
+        email += line + "\n"
+    email += f"""
+Freight is included in pipe price.
+Total = ${total:,.2f}
+
+Thank you,
+Hayden St. Romain
+Account Manager | C 678.814.3208
+"""
+    st.text_area("Copy this into Outlook:", value=email, height=320)
