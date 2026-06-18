@@ -8,7 +8,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Fixed state management")
+st.caption("Voice-first • Stable version")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -94,8 +94,8 @@ SAFETY_PRICES = {'15': 1360, '18': 1495, '24': 2670, '30': 4360}
 def round_to_sticks(lf):
     return lf if lf % 8 == 0 else ((lf // 8) + 1) * 8
 
-# Always work directly with session_state
-if "items" not in st.session_state:
+# ==================== SAFE SESSION STATE ====================
+if "items" not in st.session_state or not isinstance(st.session_state.items, list):
     st.session_state.items = []
 if "voice_text" not in st.session_state:
     st.session_state.voice_text = ""
@@ -124,7 +124,7 @@ with col1:
         else:
             text = current_text.lower().replace(",", "")
             st.session_state.last_voice_text = current_text
-            st.session_state.items = []   # clear previous
+            st.session_state.items = []
             added = 0
             
             ton_match = re.search(r'(\d{3})\s*(?:per ton|dollars? per ton|ton|priced)', text)
