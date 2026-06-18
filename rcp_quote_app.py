@@ -8,9 +8,9 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Stable & Robust")
+st.caption("Voice-first • Final Stable Version")
 
-# ==================== PRICING ====================
+# ==================== PRICING DATA ====================
 PRICING = {
     305: {
         '15': {'CL5': Decimal('23.07')},
@@ -93,7 +93,7 @@ FLARED_PRICES = {'15': 875, '18': 1030, '24': 1725, '30': 1895, '36': 2895, '42'
 def round_to_sticks(lf):
     return lf if lf % 8 == 0 else ((lf // 8) + 1) * 8
 
-# ==================== ROBUST SESSION STATE ====================
+# ==================== SESSION STATE ====================
 if "items" not in st.session_state or not isinstance(st.session_state.get("items"), list):
     st.session_state.items = []
 if "voice_text" not in st.session_state:
@@ -105,7 +105,7 @@ if "last_voice_text" not in st.session_state:
 st.subheader("🎤 Speak or Type Quote")
 
 voice_text = st.text_area(
-    "Speak naturally (use 'Process Voice Input' for quick quotes or 'Process Takeoff' when reading plans):",
+    "Speak naturally:",
     value=st.session_state.voice_text,
     height=140,
     key="voice_input"
@@ -116,29 +116,20 @@ col1, col2, col3 = st.columns([2, 2, 1])
 with col1:
     if st.button("Process Voice Input", type="primary", use_container_width=True):
         current_text = st.session_state.get("voice_input", "").strip()
-        if not current_text:
-            st.warning("Please enter some text first.")
-        elif st.session_state.last_voice_text == current_text:
-            st.info("Already processed. Click 'New Quote' to start fresh.")
-        else:
+        if current_text and st.session_state.last_voice_text != current_text:
             text = current_text.lower().replace(",", "")
             st.session_state.last_voice_text = current_text
             st.session_state.items = []
             added = 0
-            
             ton_match = re.search(r'(\d{3})\s*(?:per ton|dollars? per ton|ton|priced)', text)
             detected_ton = int(ton_match.group(1)) if ton_match else 315
             if detected_ton not in PRICING:
                 detected_ton = 315
-            
-            text = re.sub(r'(\d+)\s*hundred(?:\s+and)?\s*(\d+)?', 
-                         lambda m: str(int(m.group(1))*100 + (int(m.group(2)) if m.group(2) else 0)), text)
-            
+            text = re.sub(r'(\d+)\s*hundred(?:\s+and)?\s*(\d+)?', lambda m: str(int(m.group(1))*100 + (int(m.group(2)) if m.group(2) else 0)), text)
             pipe_patterns = [
                 r'(\d+)\s*(?:feet|ft|lf|linear\s*feet|\'|\")?\s*(?:of)?\s*(\d+)\s*(?:inch|in|")\s*(?:class|cl|CL)?\s*([345]|three|four|five)',
                 r'(\d+)\s*(?:feet|ft)?\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)',
             ]
-            
             for pattern in pipe_patterns:
                 for match in re.finditer(pattern, text, re.IGNORECASE):
                     qty = int(match.group(1))
@@ -154,33 +145,26 @@ with col1:
                         current_list.append({"type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": detected_ton})
                         st.session_state.items = current_list
                         added += 1
-            
             if added > 0:
-                st.success(f"Added {added} item(s) — replaced previous quote")
+                st.success(f"Added {added} item(s)")
             else:
                 st.warning("No items detected")
 
 with col2:
     if st.button("Process Takeoff", type="secondary", use_container_width=True):
         current_text = st.session_state.get("voice_input", "").strip()
-        if not current_text:
-            st.warning("Please enter some text first.")
-        else:
+        if current_text:
             text = current_text.lower().replace(",", "")
             added = 0
             ton_match = re.search(r'(\d{3})\s*(?:per ton|dollars? per ton|ton|priced)', text)
             detected_ton = int(ton_match.group(1)) if ton_match else 315
             if detected_ton not in PRICING:
                 detected_ton = 315
-            
-            text = re.sub(r'(\d+)\s*hundred(?:\s+and)?\s*(\d+)?', 
-                         lambda m: str(int(m.group(1))*100 + (int(m.group(2)) if m.group(2) else 0)), text)
-            
+            text = re.sub(r'(\d+)\s*hundred(?:\s+and)?\s*(\d+)?', lambda m: str(int(m.group(1))*100 + (int(m.group(2)) if m.group(2) else 0)), text)
             pipe_patterns = [
                 r'(\d+)\s*(?:feet|ft|lf|linear\s*feet|\'|\")?\s*(?:of)?\s*(\d+)\s*(?:inch|in|")\s*(?:class|cl|CL)?\s*([345]|three|four|five)',
                 r'(\d+)\s*(?:feet|ft)?\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)',
             ]
-            
             for pattern in pipe_patterns:
                 for match in re.finditer(pattern, text, re.IGNORECASE):
                     qty = int(match.group(1))
@@ -196,7 +180,6 @@ with col2:
                         current_list.append({"type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": detected_ton})
                         st.session_state.items = current_list
                         added += 1
-            
             if added > 0:
                 st.success(f"Added {added} item(s) to takeoff")
             else:
@@ -209,7 +192,7 @@ with col3:
         st.session_state.voice_text = ""
         st.rerun()
 
-# ==================== CURRENT ITEMS ====================
+# Current Items
 st.subheader("Current Items")
 if isinstance(st.session_state.items, list):
     for item in st.session_state.items:
@@ -231,7 +214,6 @@ if st.button("Generate Professional Quote", type="primary"):
     st.subheader("Quote")
     total = Decimal(0)
     lines = []
-
     current_items = st.session_state.items if isinstance(st.session_state.items, list) else []
     pipe_items = [item for item in current_items if item.get("type") == "pipe"]
     flared_items = [item for item in current_items if item.get("type") == "Flared End"]
@@ -241,12 +223,8 @@ if st.button("Generate Professional Quote", type="primary"):
         total_pounds = sum(Decimal(item["lf"]) * Decimal(PIPE_WEIGHTS.get(item["size"], 0)) for item in pipe_items)
         total_tons = total_pounds / Decimal(2000)
         truckloads = float(total_tons) / 24.0
-        if truckloads - int(truckloads) > 0.5:
-            lube_buckets = math.ceil(truckloads)
-        else:
-            lube_buckets = math.floor(truckloads)
-        if lube_buckets < 1:
-            lube_buckets = 1
+        lube_buckets = math.ceil(truckloads) if (truckloads - int(truckloads) > 0.5) else math.floor(truckloads)
+        if lube_buckets < 1: lube_buckets = 1
     else:
         lube_buckets = 1
 
@@ -290,7 +268,6 @@ Please see pricing below for {project_name}:
 """
     for line in lines:
         email += line + "\n"
-
     email += f"""Freight included in pipe price.
 Total = ${total:,.2f}
 
@@ -306,6 +283,4 @@ Stockbridge, GA 30281
 RinkerPipe.com
 Hayden.st.romain@rinkerpipe.com
 """
-
     st.text_area("Generated Quote:", value=email, height=280)
-    st.code(email, language="text")
