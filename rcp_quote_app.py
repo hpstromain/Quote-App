@@ -1,489 +1,169 @@
-import streamlit as st
-from decimal import Decimal, getcontext
-import re
-import math
-from collections import defaultdict
+import { useState, useRef, useCallback } from "react";
 
-getcontext().prec = 28
+const PRICING = {
+  305: {
+    "15": { CL5: 23.07 },
+    "18": { CL3: 27.83, CL5: 28.93 },
+    "24": { CL3: 43.46, CL5: 47.81 },
+    "30": { CL3: 61.76, CL4: 64.85, CL5: 67.94 },
+    "36": { CL3: 87.69, CL4: 92.07, CL5: 96.46 },
+    "42": { CL3: 106.75, CL4: 112.09, CL5: 117.43 },
+    "48": { CL3: 133.44, CL4: 140.11, CL5: 146.78 },
+    "54": { CL3: 183.0, CL4: 192.15, CL5: 201.3 },
+    "60": { CL3: 221.13, CL4: 232.18, CL5: 243.24 },
+    "66": { CL3: 263.06, CL4: 276.22, CL5: 289.37 },
+    "72": { CL3: 308.81, CL4: 324.25, CL5: 339.69 },
+    "84": { CL3: 400.31, CL4: 420.33, CL5: 440.34 },
+  },
+  310: {
+    "15": { CL5: 23.44 },
+    "18": { CL3: 28.29, CL5: 29.39 },
+    "24": { CL3: 44.18, CL5: 48.59 },
+    "30": { CL3: 62.78, CL4: 65.91, CL5: 69.05 },
+    "36": { CL3: 89.13, CL4: 93.58, CL5: 98.04 },
+    "42": { CL3: 108.5, CL4: 113.93, CL5: 119.35 },
+    "48": { CL3: 135.63, CL4: 142.41, CL5: 149.19 },
+    "54": { CL3: 186.0, CL4: 195.3, CL5: 204.6 },
+    "60": { CL3: 224.75, CL4: 235.99, CL5: 247.23 },
+    "66": { CL3: 267.38, CL4: 280.74, CL5: 294.11 },
+    "72": { CL3: 313.88, CL4: 329.57, CL5: 345.26 },
+    "84": { CL3: 406.88, CL4: 427.22, CL5: 447.56 },
+  },
+  315: {
+    "15": { CL5: 23.5 },
+    "18": { CL3: 28.74, CL4: 29.79, CL5: 29.84 },
+    "24": { CL3: 44.89, CL4: 47.13, CL5: 49.38 },
+    "30": { CL3: 63.79, CL4: 66.98, CL5: 70.17 },
+    "36": { CL3: 90.56, CL4: 95.09, CL5: 99.62 },
+    "42": { CL3: 110.25, CL4: 115.76, CL5: 121.28 },
+    "48": { CL3: 137.81, CL4: 144.7, CL5: 151.59 },
+    "54": { CL3: 189.0, CL4: 198.45, CL5: 207.9 },
+    "60": { CL3: 228.38, CL4: 239.79, CL5: 251.21 },
+    "66": { CL3: 271.69, CL4: 285.27, CL5: 298.86 },
+    "72": { CL3: 318.94, CL4: 334.88, CL5: 350.83 },
+  },
+  320: {
+    "15": { CL5: 24.2 },
+    "18": { CL3: 29.2, CL5: 30.3 },
+    "24": { CL3: 45.6, CL5: 50.16 },
+    "30": { CL3: 64.8, CL4: 68.04, CL5: 71.28 },
+    "36": { CL3: 92.0, CL4: 96.6, CL5: 101.2 },
+    "42": { CL3: 112.0, CL4: 117.6, CL5: 123.2 },
+    "48": { CL3: 140.0, CL4: 147.0, CL5: 154.0 },
+    "54": { CL3: 192.0, CL4: 201.6, CL5: 211.2 },
+    "60": { CL3: 232.0, CL4: 243.6, CL5: 255.2 },
+    "66": { CL3: 276.0, CL4: 289.8, CL5: 303.6 },
+    "72": { CL3: 324.0, CL4: 340.2, CL5: 356.4 },
+  },
+  325: {
+    "15": { CL5: 24.57 },
+    "18": { CL3: 29.65, CL5: 30.75 },
+    "24": { CL3: 46.31, CL5: 50.94 },
+    "30": { CL3: 65.81, CL4: 69.1, CL5: 72.39 },
+    "36": { CL3: 93.44, CL4: 98.11, CL5: 102.78 },
+    "42": { CL3: 113.75, CL4: 119.44, CL5: 125.13 },
+    "48": { CL3: 142.19, CL4: 149.3, CL5: 156.41 },
+    "54": { CL3: 195.0, CL4: 204.75, CL5: 214.5 },
+    "60": { CL3: 235.63, CL4: 247.41, CL5: 259.19 },
+    "66": { CL3: 280.0, CL4: 294.0, CL5: 308.0 },
+    "72": { CL3: 329.0, CL4: 345.45, CL5: 361.9 },
+  },
+};
 
-st.set_page_config(
-    page_title="RCP Quote Assistant",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
+const PIPE_WEIGHTS = {
+  "15": 155, "18": 175, "24": 290, "30": 410,
+  "36": 563, "42": 860, "48": 1055, "54": 1270,
+  "60": 1505, "66": 1755, "72": 2030, "84": 2655,
+};
 
-st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Robust parsing • Takeoff mode • Professional quotes | v2 (Improved)")
+const FLARED_PRICES = {
+  "15": 875, "18": 1030, "24": 1725, "30": 1895, "36": 2895, "42": 3895,
+};
 
-# ==================== PRICING (Updated with 325 support) ====================
-PRICING = {
-    305: {
-        '15': {'CL5': Decimal('23.07')},
-        '18': {'CL3': Decimal('27.83'), 'CL5': Decimal('28.93')},
-        '24': {'CL3': Decimal('43.46'), 'CL5': Decimal('47.81')},
-        '30': {'CL3': Decimal('61.76'), 'CL4': Decimal('64.85'), 'CL5': Decimal('67.94')},
-        '36': {'CL3': Decimal('87.69'), 'CL4': Decimal('92.07'), 'CL5': Decimal('96.46')},
-        '42': {'CL3': Decimal('106.75'), 'CL4': Decimal('112.09'), 'CL5': Decimal('117.43')},
-        '48': {'CL3': Decimal('133.44'), 'CL4': Decimal('140.11'), 'CL5': Decimal('146.78')},
-        '54': {'CL3': Decimal('183.00'), 'CL4': Decimal('192.15'), 'CL5': Decimal('201.30')},
-        '60': {'CL3': Decimal('221.13'), 'CL4': Decimal('232.18'), 'CL5': Decimal('243.24')},
-        '66': {'CL3': Decimal('263.06'), 'CL4': Decimal('276.22'), 'CL5': Decimal('289.37')},
-        '72': {'CL3': Decimal('308.81'), 'CL4': Decimal('324.25'), 'CL5': Decimal('339.69')},
-        '84': {'CL3': Decimal('400.31'), 'CL4': Decimal('420.33'), 'CL5': Decimal('440.34')},
-    },
-    310: {
-        '15': {'CL5': Decimal('23.44')},
-        '18': {'CL3': Decimal('28.29'), 'CL5': Decimal('29.39')},
-        '24': {'CL3': Decimal('44.18'), 'CL5': Decimal('48.59')},
-        '30': {'CL3': Decimal('62.78'), 'CL4': Decimal('65.91'), 'CL5': Decimal('69.05')},
-        '36': {'CL3': Decimal('89.13'), 'CL4': Decimal('93.58'), 'CL5': Decimal('98.04')},
-        '42': {'CL3': Decimal('108.50'), 'CL4': Decimal('113.93'), 'CL5': Decimal('119.35')},
-        '48': {'CL3': Decimal('135.63'), 'CL4': Decimal('142.41'), 'CL5': Decimal('149.19')},
-        '54': {'CL3': Decimal('186.00'), 'CL4': Decimal('195.30'), 'CL5': Decimal('204.60')},
-        '60': {'CL3': Decimal('224.75'), 'CL4': Decimal('235.99'), 'CL5': Decimal('247.23')},
-        '66': {'CL3': Decimal('267.38'), 'CL4': Decimal('280.74'), 'CL5': Decimal('294.11')},
-        '72': {'CL3': Decimal('313.88'), 'CL4': Decimal('329.57'), 'CL5': Decimal('345.26')},
-        '84': {'CL3': Decimal('406.88'), 'CL4': Decimal('427.22'), 'CL5': Decimal('447.56')},
-    },
-    315: {
-        '15': {'CL5': Decimal('23.50')},
-        '18': {'CL3': Decimal('28.74'), 'CL4': Decimal('29.79'), 'CL5': Decimal('29.84')},
-        '24': {'CL3': Decimal('44.89'), 'CL4': Decimal('47.13'), 'CL5': Decimal('49.38')},
-        '30': {'CL3': Decimal('63.79'), 'CL4': Decimal('66.98'), 'CL5': Decimal('70.17')},
-        '36': {'CL3': Decimal('90.56'), 'CL4': Decimal('95.09'), 'CL5': Decimal('99.62')},
-        '42': {'CL3': Decimal('110.25'), 'CL4': Decimal('115.76'), 'CL5': Decimal('121.28')},
-        '48': {'CL3': Decimal('137.81'), 'CL4': Decimal('144.70'), 'CL5': Decimal('151.59')},
-        '54': {'CL3': Decimal('189.00'), 'CL4': Decimal('198.45'), 'CL5': Decimal('207.90')},
-        '60': {'CL3': Decimal('228.38'), 'CL4': Decimal('239.79'), 'CL5': Decimal('251.21')},
-        '66': {'CL3': Decimal('271.69'), 'CL4': Decimal('285.27'), 'CL5': Decimal('298.86')},
-        '72': {'CL3': Decimal('318.94'), 'CL4': Decimal('334.88'), 'CL5': Decimal('350.83')},
-    },
-    320: {
-        '15': {'CL5': Decimal('24.20')},
-        '18': {'CL3': Decimal('29.20'), 'CL5': Decimal('30.30')},
-        '24': {'CL3': Decimal('45.60'), 'CL5': Decimal('50.16')},
-        '30': {'CL3': Decimal('64.80'), 'CL4': Decimal('68.04'), 'CL5': Decimal('71.28')},
-        '36': {'CL3': Decimal('92.00'), 'CL4': Decimal('96.60'), 'CL5': Decimal('101.20')},
-        '42': {'CL3': Decimal('112.00'), 'CL4': Decimal('117.60'), 'CL5': Decimal('123.20')},
-        '48': {'CL3': Decimal('140.00'), 'CL4': Decimal('147.00'), 'CL5': Decimal('154.00')},
-        '54': {'CL3': Decimal('192.00'), 'CL4': Decimal('201.60'), 'CL5': Decimal('211.20')},
-        '60': {'CL3': Decimal('232.00'), 'CL4': Decimal('243.60'), 'CL5': Decimal('255.20')},
-        '66': {'CL3': Decimal('276.00'), 'CL4': Decimal('289.80'), 'CL5': Decimal('303.60')},
-        '72': {'CL3': Decimal('324.00'), 'CL4': Decimal('340.20'), 'CL5': Decimal('356.40')},
+function roundToSticks(lf) {
+  return lf % 8 === 0 ? lf : (Math.floor(lf / 8) + 1) * 8;
+}
+
+function applyClassSub(size, cl) {
+  if (size === "15") return "CL5";
+  if ((size === "18" || size === "24") && cl === "CL4") return "CL5";
+  return cl;
+}
+
+function calcLubeBuckets(pipeItems) {
+  if (!pipeItems.length) return 1;
+  const totalLbs = pipeItems.reduce((sum, item) => {
+    return sum + item.lf * (PIPE_WEIGHTS[item.size] || 0);
+  }, 0);
+  const totalTons = totalLbs / 2000;
+  const truckloads = totalTons / 24;
+  const frac = truckloads - Math.floor(truckloads);
+  let buckets = frac > 0.5 ? Math.ceil(truckloads) : Math.floor(truckloads);
+  return Math.max(1, buckets);
+}
+
+function consolidateItems(items) {
+  const pipeMap = {};
+  const flared = [];
+  items.forEach((item) => {
+    if (item.type === "pipe") {
+      const key = `${item.size}|${item.cl}|${item.ton}`;
+      if (pipeMap[key]) {
+        pipeMap[key].lf += item.lf;
+      } else {
+        pipeMap[key] = { ...item };
+      }
+    } else {
+      const existing = flared.find((f) => f.size === item.size);
+      if (existing) existing.qty += item.qty;
+      else flared.push({ ...item });
     }
+  });
+  const pipes = Object.values(pipeMap).sort((a, b) => parseInt(a.size) - parseInt(b.size));
+  return { pipes, flared };
 }
 
-# Add 325/ton tier (extrapolated ~+$5/LF from 320 rates; UPDATE with actual spreadsheet values when available)
-PRICING[325] = {}
-for size, cl_dict in PRICING.get(320, {}).items():
-    PRICING[325][size] = {cl: (price + Decimal('5.00')) for cl, price in cl_dict.items()}
+function generateEmail(projectName, customerName, items) {
+  const { pipes, flared } = consolidateItems(items);
+  const lubeBuckets = calcLubeBuckets(pipes);
+  const lubeTotal = lubeBuckets * 60;
+  let grandTotal = lubeTotal;
+  const lines = [];
 
-PIPE_WEIGHTS = {
-    '15': 155, '18': 175, '24': 290, '30': 410,
-    '36': 563, '42': 860, '48': 1055, '54': 1270,
-    '60': 1505, '66': 1755, '72': 2030, '84': 2655
-}
+  pipes.forEach((item) => {
+    const priceTable = PRICING[item.ton];
+    if (!priceTable || !priceTable[item.size] || !priceTable[item.size][item.cl]) return;
+    const price = priceTable[item.size][item.cl];
+    const rounded = roundToSticks(item.lf);
+    const ext = rounded * price;
+    grandTotal += ext;
+    lines.push(`${rounded} LF ${item.size}" RCP ${item.cl} @ $${price.toFixed(2)}/LF = $${ext.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    const gaskets = Math.floor(rounded / 8);
+    if (gaskets > 0) {
+      lines.push(`  ${gaskets} EA ${item.size}" Gaskets @ $0.00/EA = $0.00`);
+    }
+  });
 
-FLARED_PRICES = {'15': 875, '18': 1030, '24': 1725, '30': 1895, '36': 2895, '42': 3895}
-SAFETY_PRICES = {'15': 1360, '18': 1495, '24': 2670, '30': 4360}  # kept for future use
+  flared.forEach((item) => {
+    const price = FLARED_PRICES[item.size] || 0;
+    const ext = item.qty * price;
+    grandTotal += ext;
+    lines.push(`${item.qty} EA ${item.size}" FES @ $${price.toFixed(2)}/EA = $${ext.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+  });
 
-def round_to_sticks(lf):
-    """Round linear feet up to next multiple of 8 (stick length)."""
-    return lf if lf % 8 == 0 else ((lf // 8) + 1) * 8
+  lines.push(`${lubeBuckets} EA 30lb Joint Lube @ $60.00/EA = $${lubeTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
-# ==================== SPOKEN NUMBER SUPPORT ====================
-word_to_num = {
-    'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
-    'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
-    'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14, 'fifteen': 15,
-    'sixteen': 16, 'seventeen': 17, 'eighteen': 18, 'nineteen': 19,
-    'twenty': 20, 'thirty': 30, 'forty': 40, 'fifty': 50,
-    'sixty': 60, 'seventy': 70, 'eighty': 80, 'ninety': 90,
-    'hundred': 100, 'thousand': 1000
-}
+  const greeting = customerName ? `Good afternoon ${customerName},` : "Good afternoon,";
+  const projectRef = projectName ? `for ${projectName}` : "";
 
-def _parse_num_phrase(phrase: str):
-    """Convert spoken number phrase like 'five hundred eighty four' to int."""
-    if not phrase:
-        return None
-    words = [w.strip('.,;:!?') for w in phrase.lower().split() if w.strip()]
-    total = 0
-    current = 0
-    for w in words:
-        if w == 'and' or not w:
-            continue
-        if w.isdigit():
-            current += int(w)
-            continue
-        val = word_to_num.get(w)
-        if val is None:
-            return None
-        if val >= 100:
-            if current == 0:
-                current = 1
-            current *= val
-        else:
-            current += val
-    total += current
-    return total if total > 0 else None
+  const email = `${greeting}
 
-def normalize_text(text: str) -> str:
-    """Lowercase, remove commas, convert spoken numbers and size words to digits."""
-    if not text:
-        return ""
-    text = text.lower().replace(",", " ").replace("  ", " ").strip()
+Please see pricing below ${projectRef}:
 
-    # Handle numeric "300 hundred" style if any
-    text = re.sub(
-        r'(\d+)\s*hundred(?:\s+and)?\s*(\d+)?',
-        lambda m: str(int(m.group(1)) * 100 + (int(m.group(2)) if m.group(2) else 0)),
-        text
-    )
+${lines.join("\n")}
 
-    # Size words to digits (longer phrases first)
-    size_map = [
-        (r'\btwenty[-\s]?four\b', '24'),
-        (r'\bthirty[-\s]?six\b', '36'),
-        (r'\bforty[-\s]?two\b', '42'),
-        (r'\bforty[-\s]?eight\b', '48'),
-        (r'\bfifty[-\s]?four\b', '54'),
-        (r'\bsixty[-\s]?six\b', '66'),
-        (r'\bseventy[-\s]?two\b', '72'),
-        (r'\beighty[-\s]?four\b', '84'),
-        (r'\bfifteen\b', '15'),
-        (r'\beighteen\b', '18'),
-        (r'\bthirty\b', '30'),
-        (r'\bsixty\b', '60'),
-    ]
-    for pat, repl in size_map:
-        text = re.sub(pat, repl, text, flags=re.IGNORECASE)
-
-    # Convert spoken qty phrases (e.g. "five hundred eighty four feet" -> "584 feet")
-    num_alt = '|'.join(sorted(word_to_num.keys(), key=len, reverse=True))
-    unit_lookahead = r'(?=feet|ft\b|lf\b|linear\s*feet?|\d+\s*(?:inch|"))'
-    phrase_re = rf'\b((?:{num_alt}\s+){{1,6}})(?={unit_lookahead})'
-
-    replacements = []
-    for m in re.finditer(phrase_re, text, re.IGNORECASE):
-        phrase = m.group(1).strip()
-        val = _parse_num_phrase(phrase)
-        if val is not None:
-            replacements.append((m.start(1), m.end(1), str(val)))
-
-    for start, end, repl in sorted(replacements, reverse=True):
-        text = text[:start] + repl + text[end:]
-
-    return text
-
-# ==================== PARSING LOGIC ====================
-def parse_quote_text(text: str):
-    """Parse natural language into list of item dicts. Returns (items, detected_ton)."""
-    if not text or not text.strip():
-        return [], 315
-
-    items = []
-    text_l = text.lower()
-
-    # Ton detection: last mentioned XXX per ton wins (handles "priced at 305 per ton")
-    ton_matches = re.findall(r'(\d{3})\s*(?:per ton|dollars?\s*per\s*ton|/\s*ton|\bton\b)', text_l)
-    detected_ton = int(ton_matches[-1]) if ton_matches else 315
-    if detected_ton not in PRICING:
-        detected_ton = 315
-
-    text_norm = normalize_text(text)
-
-    clauses = re.split(r'[.!?;\n]+', text_norm + " ")
-
-    for clause in clauses:
-        clause = clause.strip()
-        if len(clause) < 3:
-            continue
-
-        # Pipe pattern: qty + (feet/lf) + size + inch + (class/CL) + (3/4/5 or words)
-        pipe_re = r'(\d+)\s*(?:feet|ft|lf|linear\s*feet?)?\s*(?:of\s+)?(\d+)\s*(?:inch|")?\s*(?:rcp|pipe)?\s*(?:class\s*|cl\s*)?([3-5]|three|four|five)'
-        for m in re.finditer(pipe_re, clause, re.IGNORECASE):
-            try:
-                lf = int(m.group(1))
-                size = m.group(2)
-                cl_raw = m.group(3).lower().strip()
-                cl_map = {"three": "3", "four": "4", "five": "5"}
-                cl = "CL" + cl_map.get(cl_raw, cl_raw)
-
-                # Class substitution rules
-                if size == "15":
-                    cl = "CL5"
-                elif size in ("18", "24") and cl == "CL4":
-                    cl = "CL5"
-
-                if (size in PRICING.get(detected_ton, {}) and
-                        cl in PRICING[detected_ton].get(size, {})):
-                    items.append({
-                        "type": "pipe",
-                        "size": size,
-                        "cl": cl,
-                        "lf": lf,
-                        "ton": detected_ton
-                    })
-            except Exception:
-                continue
-
-        # Flared End Sections
-        flared_re = r'(?:^|[\s,])(?:one|1)?\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*(?:inch|")?\s*(?:flared|flared\s*end| fes |flared end section)'
-        for m in re.finditer(flared_re, clause, re.IGNORECASE):
-            try:
-                qty = int(m.group(1)) if m.group(1) else 1
-                size = m.group(2)
-                if size in FLARED_PRICES:
-                    items.append({
-                        "type": "Flared End",
-                        "size": size,
-                        "qty": qty,
-                        "price": FLARED_PRICES[size]
-                    })
-            except Exception:
-                continue
-
-    return items, detected_ton
-
-def add_or_update_item(new_item: dict):
-    """Add new item or consolidate (sum lf/qty) if same size+cl+ton (pipe) or same size (flared)."""
-    items = st.session_state.items
-    if new_item.get("type") == "pipe":
-        for it in items:
-            if (it.get("type") == "pipe" and
-                    it["size"] == new_item["size"] and
-                    it["cl"] == new_item["cl"] and
-                    it.get("ton") == new_item.get("ton")):
-                it["lf"] += new_item["lf"]
-                return True
-        items.append(new_item)
-        return True
-    elif new_item.get("type") == "Flared End":
-        for it in items:
-            if it.get("type") == "Flared End" and it["size"] == new_item["size"]:
-                it["qty"] += new_item["qty"]
-                return True
-        items.append(new_item)
-        return True
-    return False
-
-# ==================== QUOTE BUILDING / CALC LOGIC ====================
-def build_quote(items, project_name="Project"):
-    """Build sorted, consolidated quote lines + total. Returns (lines, total, lube_buckets)."""
-    if not items:
-        return [], Decimal(0), 1
-
-    pipe_items = [it for it in items if it.get("type") == "pipe"]
-    flared_items = [it for it in items if it.get("type") == "Flared End"]
-
-    # Group for final consolidation + sorting
-    pipe_groups = defaultdict(int)  # (size, cl, ton) -> total_lf
-    for it in pipe_items:
-        key = (it["size"], it["cl"], it.get("ton", 315))
-        pipe_groups[key] += it["lf"]
-
-    flared_groups = defaultdict(int)
-    for it in flared_items:
-        flared_groups[it["size"]] += it["qty"]
-
-    # Joint lube calculation (truckloads based on total pipe weight)
-    total_pounds = sum(
-        Decimal(lf) * Decimal(PIPE_WEIGHTS.get(sz, 0))
-        for (sz, _, _), lf in pipe_groups.items()
-    )
-    if total_pounds > 0:
-        total_tons_f = float(total_pounds / Decimal(2000))
-        truckloads = total_tons_f / 24.0
-        lube_buckets = math.ceil(truckloads) if (truckloads - int(truckloads) > 0.5) else math.floor(truckloads)
-        if lube_buckets < 1:
-            lube_buckets = 1
-    else:
-        lube_buckets = 1
-    lube_total = lube_buckets * 60
-
-    lines = []
-    total = Decimal(0)
-
-    # Pipes: sort by size asc, then class, then ton
-    for key in sorted(pipe_groups.keys(), key=lambda k: (int(k[0]), k[1], k[2])):
-        size, cl, ton = key
-        lf = pipe_groups[key]
-        if ton not in PRICING or size not in PRICING[ton] or cl not in PRICING[ton][size]:
-            continue
-        price = PRICING[ton][size][cl]
-        rounded_lf = round_to_sticks(lf)
-        ext = Decimal(rounded_lf) * price
-        total += ext
-        lines.append(f"{rounded_lf} LF {size}” RCP {cl} @ ${float(price):.2f}/LF = ${ext:,.2f}")
-        gaskets = rounded_lf // 8
-        if gaskets > 0:
-            lines.append(f"    {gaskets} EA {size}” Gaskets @ $0.00/EA = $0.00")
-
-    # Flared End Sections sorted by size
-    for size in sorted(flared_groups.keys(), key=int):
-        qty = flared_groups[size]
-        p = FLARED_PRICES.get(size, 0)
-        ext = Decimal(qty) * Decimal(p)
-        total += ext
-        lines.append(f"{qty} EA {size}” FES @ ${p}/EA = ${ext:,.2f}")
-
-    # Joint Lube
-    total += Decimal(lube_total)
-    lines.append(f"{lube_buckets} EA 30lb Joint Lube @ $60.00/EA = ${lube_total:,.2f}")
-
-    return lines, total, lube_buckets
-
-# ==================== SESSION STATE ====================
-for key, default in [
-    ("items", []),
-    ("project_name", "Project"),
-    ("last_voice_text", ""),
-    ("voice_input", ""),
-]:
-    if key not in st.session_state:
-        st.session_state[key] = default
-
-# ==================== INPUT UI ====================
-st.subheader("🎤 Speak or Type Quote Details")
-st.caption("Tip: Include 'Project name XYZ' at start. Mention price tier e.g. 'at 315 per ton'. Use 'Process Takeoff' to accumulate while reading plans.")
-
-voice_text = st.text_area(
-    "Voice / Text Input (mobile voice-to-text works here):",
-    value=st.session_state.get("voice_input", ""),
-    height=130,
-    key="voice_input",
-    placeholder="e.g. Project name Gold Creek GC 20. 584 feet of 18 inch class three priced at 305 per ton. Also 2 each 24 inch flared ends."
-)
-
-# Project name (editable, auto-filled from parse when possible)
-pcol1, pcol2 = st.columns([4, 1])
-with pcol1:
-    pn = st.text_input(
-        "Project / Job Name",
-        value=st.session_state.project_name,
-        key="pn_input",
-        help="Auto-extracted from text if 'project name ...' present. Edit anytime."
-    )
-    if pn != st.session_state.project_name:
-        st.session_state.project_name = pn
-with pcol2:
-    if st.button("Reset", key="reset_proj", help="Reset project name to 'Project'"):
-        st.session_state.project_name = "Project"
-        if "pn_input" in st.session_state:
-            st.session_state["pn_input"] = "Project"
-        st.rerun()
-
-# ==================== PROCESSING BUTTONS (Two modes as per spec) ====================
-st.markdown("**Processing Mode** — Choose one:")
-
-def do_process(replace_mode: bool):
-    """Core processing: normalize, parse, extract project, consolidate-add items."""
-    current_text = st.session_state.get("voice_input", "").strip()
-    if not current_text:
-        st.warning("Please enter or dictate text in the box above first.")
-        return
-
-    last = st.session_state.get("last_voice_text", "")
-    if current_text == last:
-        st.info("Input text is unchanged since last process. Edit the text (change a number, add another item, or rephrase) then click a Process button again.")
-        return
-
-    parsed_items, det_ton = parse_quote_text(current_text)
-    if not parsed_items:
-        st.warning("No valid pipe or flared items detected. Try: '200 LF of 24 inch class 5 at 315 per ton' or 'project name My Job - 120 feet of 36 inch CL3 priced at 310 per ton'.")
-        return
-
-    # Try to extract project name from original (raw) text for better capture
-    proj_m = re.search(
-        r'(?:project|job)\s*(?:name)?\s*[:\-=]?\s*([A-Za-z0-9][A-Za-z0-9\s\.\-&]{2,}?)(?=\s*(?:\.|quantit|they|need|priced|price|LF|feet|inch|add|also))',
-        current_text,
-        re.IGNORECASE
-    )
-    if proj_m:
-        extracted = proj_m.group(1).strip().rstrip('.,; ')
-        if len(extracted) > 1:
-            st.session_state.project_name = extracted
-            if "pn_input" in st.session_state:
-                st.session_state["pn_input"] = extracted
-
-    # Add / merge items (consolidation happens inside)
-    for itm in parsed_items:
-        add_or_update_item(itm)
-
-    st.success(f"✅ Added/merged {len(parsed_items)} item(s) @ ${det_ton}/ton tier. Duplicates of same size+class+ton were consolidated.")
-    st.session_state.last_voice_text = current_text
-    st.rerun()
-
-proc_col1, proc_col2 = st.columns(2)
-with proc_col1:
-    if st.button("🔄 Process Voice Input\n(Replace All)", type="primary", use_container_width=True,
-                 help="Clears current items then parses fresh. Use to start a brand new quote."):
-        st.session_state.items = []
-        do_process(replace_mode=True)
-
-with proc_col2:
-    if st.button("➕ Process Takeoff\n(Accumulate)", use_container_width=True,
-                 help="Parses and ADDS items to existing list (merges same size+class). Perfect for reading plans incrementally."):
-        do_process(replace_mode=False)
-
-# ==================== CURRENT ITEMS ====================
-st.subheader("📋 Current Items (auto-consolidated by size + class + ton)")
-
-items = st.session_state.items
-if not items:
-    st.info("No items yet — speak/type above and use one of the Process buttons.")
-else:
-    for idx in range(len(items)):
-        item = items[idx]
-        if item.get("type") == "pipe":
-            txt = f"**{item['lf']} LF** {item['size']}\" {item['cl']} @ {item['ton']}/ton"
-        else:
-            txt = f"**{item['qty']} EA** {item['size']}\" {item['type']}"
-        c1, c2 = st.columns([6, 1])
-        with c1:
-            st.markdown(f"• {txt}")
-        with c2:
-            if st.button("❌", key=f"del_{idx}", help="Remove this item"):
-                st.session_state.items.pop(idx)
-                st.rerun()
-
-    total_lf = sum(it.get("lf", 0) for it in items if it.get("type") == "pipe")
-    if total_lf > 0:
-        st.caption(f"Total pipe footage: {total_lf} LF  |  Est. weight varies by diameter (see lube calc on quote)")
-
-st.divider()
-
-# ==================== GENERATE QUOTE ====================
-if st.button("📄 Generate Professional Quote", type="primary", use_container_width=True):
-    if not items:
-        st.error("Add items first using the voice/text input and Process buttons.")
-    else:
-        lines, total, lube_b = build_quote(items, st.session_state.project_name)
-        proj = st.session_state.project_name or "Project"
-
-        st.subheader(f"Quote for {proj}")
-        for ln in lines:
-            if ln.startswith("    "):
-                st.text(ln)  # preserve indent for gaskets
-            else:
-                st.write(ln)
-
-        st.write("---")
-        st.success("**Freight included in pipe price.**")
-        st.write(f"### Total = ${total:,.2f}")
-
-        # Build email body
-        email = f"""Good afternoon,
-
-Please see pricing below for {proj}:
-
-"""
-        for ln in lines:
-            email += ln + "\n"
-
-        email += f"""
 Freight included in pipe price.
-Total = ${total:,.2f}
+Total = $${grandTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
 
 Please let me know if you have any questions or concerns.
 
@@ -495,22 +175,332 @@ C 678.814.3208
 148 Rock Quarry Rd
 Stockbridge, GA 30281
 RinkerPipe.com
-Hayden.st.romain@rinkerpipe.com
-"""
+Hayden.st.romain@rinkerpipe.com`;
 
-        st.text_area("📧 Email-Ready Quote (click inside, Select All, Copy)", value=email, height=320, key="final_email")
-        st.caption("The block above is formatted and ready to paste directly into Outlook/Gmail/etc.")
+  return { email, grandTotal, lines };
+}
 
-# ==================== NEW QUOTE / RESET ====================
-if st.button("🆕 New Quote (Clear All Items & Project)", use_container_width=True):
-    st.session_state.items = []
-    st.session_state.project_name = "Project"
-    st.session_state.last_voice_text = ""
-    st.session_state["voice_input"] = ""
-    if "pn_input" in st.session_state:
-        st.session_state["pn_input"] = "Project"
-    st.rerun()
+const SYSTEM_PROMPT = `You are a parsing engine for an RCP (Reinforced Concrete Pipe) quoting tool used by a field salesperson. Your ONLY job is to extract structured data from natural language input about pipe quantities and project details.
 
-# Footer
-st.caption("RCP Quote Assistant v2 • Stick rounding (×8 LF) • Auto-gaskets (1 per 8 LF) • Joint lube by truckload (24 tons/truck) • Class rules: 15\"=CL5, 18\"/24\" CL4→CL5 • All prices from current rate sheets.")
-st.caption("Mobile-optimized • Works great with phone voice-to-text • No data leaves your device")
+Return ONLY valid JSON — no markdown, no explanation, no preamble. The JSON must follow this exact schema:
+
+{
+  "projectName": string or null,
+  "customerName": string or null,
+  "pricePerTon": number (must be one of: 305, 310, 315, 320, 325) or null (default to 315),
+  "items": [
+    {
+      "type": "pipe",
+      "size": string (e.g. "18", "24", "30"),
+      "cl": string (e.g. "CL3", "CL4", "CL5"),
+      "lf": number (linear feet, integer)
+    },
+    {
+      "type": "flared",
+      "size": string,
+      "qty": number
+    }
+  ]
+}
+
+Rules:
+- Valid pipe sizes: 15, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72, 84
+- Valid classes: CL3, CL4, CL5. Convert spoken words: "three"→CL3, "four"→CL4, "five"→CL5, "class 3"→CL3, etc.
+- 15" pipe is ALWAYS CL5 regardless of what was said
+- 18" or 24" CL4 must be changed to CL5
+- Convert spoken numbers to integers: "five hundred" → 500, "seven hundred and forty four" → 744
+- Handle abbreviations: "ft", "LF", "linear feet", "feet" all mean linear footage
+- "FES" or "flared end section" or "flared end" = flared item
+- pricePerTon: look for phrases like "305 per ton", "priced at 310", "$315/ton", etc. Default to 315 if not found.
+- projectName: look for "project name X", "project X", "job name X", job codes like "GC 20"
+- customerName: look for "customer", "for", contractor names
+- If no items are found, return items as empty array []
+- Extract ALL pipe entries mentioned, even multiple sizes/classes in one statement`;
+
+export default function RCPQuoteAssistant() {
+  const [input, setInput] = useState("");
+  const [items, setItems] = useState([]);
+  const [projectName, setProjectName] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [status, setStatus] = useState(null);
+  const [parsing, setParsing] = useState(false);
+  const [quote, setQuote] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [mode, setMode] = useState("replace");
+  const textRef = useRef(null);
+
+  const parseInput = useCallback(async () => {
+    const text = input.trim();
+    if (!text) {
+      setStatus({ type: "warn", msg: "Enter some text first." });
+      return;
+    }
+    setParsing(true);
+    setStatus(null);
+    setQuote(null);
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1000,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: text }],
+        }),
+      });
+      const data = await response.json();
+      const raw = data.content?.map((b) => b.text || "").join("").trim();
+      const clean = raw.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(clean);
+
+      if (parsed.projectName) setProjectName(parsed.projectName);
+      if (parsed.customerName) setCustomerName(parsed.customerName);
+
+      const newItems = (parsed.items || []).map((item) => {
+        if (item.type === "pipe") {
+          return {
+            type: "pipe",
+            size: String(item.size),
+            cl: applyClassSub(String(item.size), item.cl || "CL3"),
+            lf: Math.round(item.lf),
+            ton: parsed.pricePerTon && PRICING[parsed.pricePerTon] ? parsed.pricePerTon : 315,
+          };
+        } else {
+          return {
+            type: "flared",
+            size: String(item.size),
+            qty: Math.round(item.qty || 1),
+          };
+        }
+      }).filter((item) => {
+        if (item.type === "pipe") {
+          const tier = PRICING[item.ton];
+          return tier && tier[item.size] && tier[item.size][item.cl];
+        }
+        return FLARED_PRICES[item.size] !== undefined;
+      });
+
+      if (mode === "replace") {
+        setItems(newItems);
+      } else {
+        setItems((prev) => [...prev, ...newItems]);
+      }
+
+      if (newItems.length > 0) {
+        setStatus({ type: "ok", msg: `Added ${newItems.length} item${newItems.length > 1 ? "s" : ""}` });
+      } else {
+        setStatus({ type: "warn", msg: "No valid pipe items detected. Try again." });
+      }
+    } catch (err) {
+      setStatus({ type: "err", msg: "Parse error. Check your input and try again." });
+    } finally {
+      setParsing(false);
+    }
+  }, [input, mode]);
+
+  const generateQuote = () => {
+    if (!items.length) {
+      setStatus({ type: "warn", msg: "Add items first before generating a quote." });
+      return;
+    }
+    const result = generateEmail(projectName, customerName, items);
+    setQuote(result);
+  };
+
+  const copyEmail = () => {
+    if (!quote) return;
+    navigator.clipboard.writeText(quote.email).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const newQuote = () => {
+    setItems([]);
+    setProjectName("");
+    setCustomerName("");
+    setInput("");
+    setStatus(null);
+    setQuote(null);
+  };
+
+  const removeItem = (idx) => {
+    setItems((prev) => prev.filter((_, i) => i !== idx));
+    setQuote(null);
+  };
+
+  const { pipes: consolidatedPipes, flared: consolidatedFlared } = consolidateItems(items);
+
+  const s = {
+    wrap: { fontFamily: "var(--font-sans)", color: "var(--color-text-primary)", paddingBottom: "2rem" },
+    header: { background: "#1a2e1a", padding: "1rem 1.25rem", borderRadius: "var(--border-radius-lg)", marginBottom: "1rem" },
+    headerTitle: { fontSize: 20, fontWeight: 500, color: "#a8d5a2", margin: 0, letterSpacing: "-0.3px" },
+    headerSub: { fontSize: 12, color: "#6b9e67", margin: "2px 0 0", fontFamily: "var(--font-mono)" },
+    section: { marginBottom: "1rem" },
+    label: { fontSize: 12, fontWeight: 500, color: "var(--color-text-secondary)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" },
+    textarea: { width: "100%", minHeight: 90, resize: "vertical", fontSize: 15, padding: "10px 12px", background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-secondary)", borderRadius: "var(--border-radius-md)", color: "var(--color-text-primary)", boxSizing: "border-box", fontFamily: "var(--font-sans)", lineHeight: 1.5 },
+    row: { display: "flex", gap: 8, marginBottom: "0.75rem" },
+    modeBtn: (active) => ({
+      flex: 1, padding: "8px 4px", fontSize: 13, fontWeight: active ? 500 : 400,
+      background: active ? "#1a2e1a" : "var(--color-background-secondary)",
+      color: active ? "#a8d5a2" : "var(--color-text-secondary)",
+      border: active ? "0.5px solid #3a5e3a" : "0.5px solid var(--color-border-tertiary)",
+      borderRadius: "var(--border-radius-md)", cursor: "pointer",
+    }),
+    primaryBtn: (disabled) => ({
+      flex: 1, padding: "11px 12px", fontSize: 14, fontWeight: 500,
+      background: disabled ? "var(--color-background-secondary)" : "#1a2e1a",
+      color: disabled ? "var(--color-text-secondary)" : "#a8d5a2",
+      border: "none", borderRadius: "var(--border-radius-md)", cursor: disabled ? "not-allowed" : "pointer",
+    }),
+    secondaryBtn: { flex: "0 0 auto", padding: "11px 14px", fontSize: 13, background: "var(--color-background-secondary)", color: "var(--color-text-secondary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: "var(--border-radius-md)", cursor: "pointer" },
+    statusBox: (type) => ({
+      padding: "8px 12px", borderRadius: "var(--border-radius-md)", fontSize: 13, marginBottom: "0.75rem",
+      background: type === "ok" ? "var(--color-background-success)" : type === "warn" ? "var(--color-background-warning)" : "var(--color-background-danger)",
+      color: type === "ok" ? "var(--color-text-success)" : type === "warn" ? "var(--color-text-warning)" : "var(--color-text-danger)",
+      border: `0.5px solid ${type === "ok" ? "var(--color-border-success)" : type === "warn" ? "var(--color-border-warning)" : "var(--color-border-danger)"}`,
+    }),
+    itemCard: { background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: "var(--border-radius-md)", padding: "8px 12px", marginBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center" },
+    itemText: { fontSize: 13, fontFamily: "var(--font-mono)", color: "var(--color-text-primary)" },
+    itemSub: { fontSize: 11, color: "var(--color-text-secondary)", marginTop: 2 },
+    removeBtn: { background: "none", border: "none", color: "var(--color-text-secondary)", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "2px 4px" },
+    metaRow: { display: "flex", gap: 8, marginBottom: "0.75rem" },
+    metaInput: { flex: 1, fontSize: 13, padding: "8px 10px", background: "var(--color-background-primary)", border: "0.5px solid var(--color-border-tertiary)", borderRadius: "var(--border-radius-md)", color: "var(--color-text-primary)", fontFamily: "var(--font-sans)" },
+    divider: { border: "none", borderTop: "0.5px solid var(--color-border-tertiary)", margin: "1rem 0" },
+    quoteBox: { background: "#0d1a0d", borderRadius: "var(--border-radius-lg)", padding: "1rem 1.25rem", marginTop: "0.75rem" },
+    quoteLine: { fontFamily: "var(--font-mono)", fontSize: 12, color: "#8fcf8a", lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word" },
+    totalLine: { fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 500, color: "#c0e8ba", marginTop: 8, borderTop: "0.5px solid #2a4a2a", paddingTop: 8 },
+    copyBtn: { width: "100%", padding: "11px", fontSize: 14, fontWeight: 500, background: "#1a2e1a", color: "#a8d5a2", border: "none", borderRadius: "var(--border-radius-md)", cursor: "pointer", marginTop: 10 },
+    emptyState: { textAlign: "center", padding: "1.5rem 1rem", color: "var(--color-text-secondary)", fontSize: 13, background: "var(--color-background-secondary)", borderRadius: "var(--border-radius-md)", border: "0.5px dashed var(--color-border-tertiary)" },
+    spinner: { display: "inline-block", width: 14, height: 14, border: "2px solid #a8d5a240", borderTopColor: "#a8d5a2", borderRadius: "50%", animation: "spin 0.7s linear infinite", marginRight: 6, verticalAlign: "middle" },
+  };
+
+  return (
+    <div style={s.wrap}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      <div style={s.header}>
+        <p style={s.headerTitle}>RCP Quote Assistant</p>
+        <p style={s.headerSub}>RINKER PIPE · HAYDEN ST. ROMAIN</p>
+      </div>
+
+      <div style={s.section}>
+        <p style={s.label}>Input mode</p>
+        <div style={s.row}>
+          <button style={s.modeBtn(mode === "replace")} onClick={() => setMode("replace")}>
+            ↺ Quick Replace
+          </button>
+          <button style={s.modeBtn(mode === "accumulate")} onClick={() => setMode("accumulate")}>
+            + Accumulate (Takeoff)
+          </button>
+        </div>
+      </div>
+
+      <div style={s.section}>
+        <p style={s.label}>Speak or type quantities</p>
+        <textarea
+          ref={textRef}
+          style={s.textarea}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={`Example: "Project Gold Creek GC 20. 584 feet of 18 inch class 3 and 320 feet of 24 inch class 5, priced at 315 per ton"`}
+        />
+        <div style={{ ...s.row, marginTop: 8 }}>
+          <button style={s.primaryBtn(parsing)} onClick={parseInput} disabled={parsing}>
+            {parsing && <span style={s.spinner} />}
+            {parsing ? "Parsing…" : mode === "replace" ? "Process Input" : "Add to Takeoff"}
+          </button>
+          <button style={s.secondaryBtn} onClick={newQuote} title="Start new quote">
+            New
+          </button>
+        </div>
+      </div>
+
+      {status && (
+        <div style={s.statusBox(status.type)}>{status.msg}</div>
+      )}
+
+      <div style={s.section}>
+        <p style={s.label}>Project details</p>
+        <div style={s.metaRow}>
+          <input
+            style={s.metaInput}
+            placeholder="Project name"
+            value={projectName}
+            onChange={(e) => { setProjectName(e.target.value); setQuote(null); }}
+          />
+          <input
+            style={s.metaInput}
+            placeholder="Customer name"
+            value={customerName}
+            onChange={(e) => { setCustomerName(e.target.value); setQuote(null); }}
+          />
+        </div>
+      </div>
+
+      <div style={s.section}>
+        <p style={s.label}>Current items ({items.length})</p>
+        {items.length === 0 ? (
+          <div style={s.emptyState}>No items yet. Speak or type quantities above.</div>
+        ) : (
+          <>
+            {consolidatedPipes.map((item, i) => {
+              const price = PRICING[item.ton]?.[item.size]?.[item.cl];
+              const rounded = roundToSticks(item.lf);
+              const ext = price ? rounded * price : 0;
+              return (
+                <div key={`p-${i}`} style={s.itemCard}>
+                  <div>
+                    <div style={s.itemText}>{item.lf} LF {item.size}" RCP {item.cl} @ ${item.ton}/ton</div>
+                    {price && <div style={s.itemSub}>→ {rounded} LF rounded · ${ext.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>}
+                  </div>
+                  <button style={s.removeBtn} onClick={() => {
+                    const idx = items.findIndex(it => it.type === "pipe" && it.size === item.size && it.cl === item.cl && it.ton === item.ton);
+                    if (idx > -1) removeItem(idx);
+                  }}>×</button>
+                </div>
+              );
+            })}
+            {consolidatedFlared.map((item, i) => (
+              <div key={`f-${i}`} style={s.itemCard}>
+                <div>
+                  <div style={s.itemText}>{item.qty} EA {item.size}" Flared End Section</div>
+                  <div style={s.itemSub}>${(item.qty * (FLARED_PRICES[item.size] || 0)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                </div>
+                <button style={s.removeBtn} onClick={() => {
+                  const idx = items.findIndex(it => it.type === "flared" && it.size === item.size);
+                  if (idx > -1) removeItem(idx);
+                }}>×</button>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+
+      <hr style={s.divider} />
+
+      <button
+        style={{ ...s.primaryBtn(items.length === 0), width: "100%", marginBottom: "0.75rem" }}
+        onClick={generateQuote}
+        disabled={items.length === 0}
+      >
+        Generate Professional Quote
+      </button>
+
+      {quote && (
+        <div>
+          <div style={s.quoteBox}>
+            <pre style={s.quoteLine}>{quote.email}</pre>
+            <div style={s.totalLine}>
+              TOTAL: ${quote.grandTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
+          <button style={s.copyBtn} onClick={copyEmail}>
+            {copied ? "✓ Copied to clipboard" : "Copy email to clipboard"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
