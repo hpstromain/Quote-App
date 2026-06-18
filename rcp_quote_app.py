@@ -82,7 +82,7 @@ with col1:
         else:
             text = current_text.lower().replace(",", "")
             st.session_state.last_voice_text = current_text
-            st.session_state.items = []   # ← Replace mode
+            st.session_state.items = []
             added = 0
             ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
             detected_ton = int(ton_match.group(1)) if ton_match else 315
@@ -91,7 +91,7 @@ with col1:
             clauses = re.split(r'[.!?]+', text)
             for clause in clauses:
                 pipe_pattern = r'(\d+)\s*(?:feet|lf|linear feet)?\s*(?:of)?\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
-                for match in re.finditer(pipe_pattern, clause):
+                for match in re.finditer(pipe_pattern, clause, re.IGNORECASE):
                     qty = int(match.group(1))
                     size = match.group(2)
                     cl_raw = match.group(3)
@@ -104,7 +104,7 @@ with col1:
                         items.append({"type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": detected_ton})
                         added += 1
                 flared_pattern = r'(?:one|1)?\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*inch\s*(?:flared|flared end)'
-                flared_match = re.search(flared_pattern, clause)
+                flared_match = re.search(flared_pattern, clause, re.IGNORECASE)
                 if flared_match:
                     qty = int(flared_match.group(1)) if flared_match.group(1) else 1
                     size = flared_match.group(2)
@@ -130,7 +130,7 @@ with col2:
             clauses = re.split(r'[.!?]+', text)
             for clause in clauses:
                 pipe_pattern = r'(\d+)\s*(?:feet|lf|linear feet)?\s*(?:of)?\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
-                for match in re.finditer(pipe_pattern, clause):
+                for match in re.finditer(pipe_pattern, clause, re.IGNORECASE):
                     qty = int(match.group(1))
                     size = match.group(2)
                     cl_raw = match.group(3)
@@ -143,7 +143,7 @@ with col2:
                         items.append({"type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": detected_ton})
                         added += 1
                 flared_pattern = r'(?:one|1)?\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*inch\s*(?:flared|flared end)'
-                flared_match = re.search(flared_pattern, clause)
+                flared_match = re.search(flared_pattern, clause, re.IGNORECASE)
                 if flared_match:
                     qty = int(flared_match.group(1)) if flared_match.group(1) else 1
                     size = flared_match.group(2)
