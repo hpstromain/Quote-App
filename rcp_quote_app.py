@@ -10,8 +10,36 @@ st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 st.title("🎤 RCP Quote Assistant")
 st.caption("Voice-first • Better project name extraction")
 
-# ==================== PRICING ====================
+# ==================== PRICING (Updated with 305 & 310) ====================
 PRICING = {
+    305: {
+        '15': {'CL5': Decimal('23.07')},
+        '18': {'CL3': Decimal('27.83'), 'CL5': Decimal('28.93')},
+        '24': {'CL3': Decimal('43.46'), 'CL5': Decimal('47.81')},
+        '30': {'CL3': Decimal('61.76'), 'CL4': Decimal('64.85'), 'CL5': Decimal('67.94')},
+        '36': {'CL3': Decimal('87.69'), 'CL4': Decimal('92.07'), 'CL5': Decimal('96.46')},
+        '42': {'CL3': Decimal('106.75'), 'CL4': Decimal('112.09'), 'CL5': Decimal('117.43')},
+        '48': {'CL3': Decimal('133.44'), 'CL4': Decimal('140.11'), 'CL5': Decimal('146.78')},
+        '54': {'CL3': Decimal('183.00'), 'CL4': Decimal('192.15'), 'CL5': Decimal('201.30')},
+        '60': {'CL3': Decimal('221.13'), 'CL4': Decimal('232.18'), 'CL5': Decimal('243.24')},
+        '66': {'CL3': Decimal('263.06'), 'CL4': Decimal('276.22'), 'CL5': Decimal('289.37')},
+        '72': {'CL3': Decimal('308.81'), 'CL4': Decimal('324.25'), 'CL5': Decimal('339.69')},
+        '84': {'CL3': Decimal('400.31'), 'CL4': Decimal('420.33'), 'CL5': Decimal('440.34')},
+    },
+    310: {
+        '15': {'CL5': Decimal('23.44')},
+        '18': {'CL3': Decimal('28.29'), 'CL5': Decimal('29.39')},
+        '24': {'CL3': Decimal('44.18'), 'CL5': Decimal('48.59')},
+        '30': {'CL3': Decimal('62.78'), 'CL4': Decimal('65.91'), 'CL5': Decimal('69.05')},
+        '36': {'CL3': Decimal('89.13'), 'CL4': Decimal('93.58'), 'CL5': Decimal('98.04')},
+        '42': {'CL3': Decimal('108.50'), 'CL4': Decimal('113.93'), 'CL5': Decimal('119.35')},
+        '48': {'CL3': Decimal('135.63'), 'CL4': Decimal('142.41'), 'CL5': Decimal('149.19')},
+        '54': {'CL3': Decimal('186.00'), 'CL4': Decimal('195.30'), 'CL5': Decimal('204.60')},
+        '60': {'CL3': Decimal('224.75'), 'CL4': Decimal('235.99'), 'CL5': Decimal('247.23')},
+        '66': {'CL3': Decimal('267.38'), 'CL4': Decimal('280.74'), 'CL5': Decimal('294.11')},
+        '72': {'CL3': Decimal('313.88'), 'CL4': Decimal('329.57'), 'CL5': Decimal('345.26')},
+        '84': {'CL3': Decimal('406.88'), 'CL4': Decimal('427.22'), 'CL5': Decimal('447.56')},
+    },
     315: {
         '15': {'CL5': Decimal('23.50')},
         '18': {'CL3': Decimal('28.74'), 'CL4': Decimal('29.79'), 'CL5': Decimal('29.84')},
@@ -95,7 +123,7 @@ with col1:
             
             for clause in clauses:
                 pipe_pattern = r'(\d+)\s*(?:feet|lf|linear feet)?\s*(?:of)?\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
-                for match in re.finditer(pipe_pattern, clause):
+                for match in re.finditer(pipe_pattern, clause, re.IGNORECASE):
                     qty = int(match.group(1))
                     size = match.group(2)
                     cl_raw = match.group(3)
@@ -118,7 +146,7 @@ with col1:
                         added += 1
                 
                 flared_pattern = r'(?:one|1)?\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*inch\s*(?:flared|flared end)'
-                flared_match = re.search(flared_pattern, clause)
+                flared_match = re.search(flared_pattern, clause, re.IGNORECASE)
                 if flared_match:
                     qty = int(flared_match.group(1)) if flared_match.group(1) else 1
                     size = flared_match.group(2)
@@ -213,7 +241,6 @@ if st.button("Generate Professional Quote", type="primary"):
     project_name = "Project"
     text_original = st.session_state.voice_text.strip()
     
-    # More flexible and reliable pattern
     match = re.search(r'project name[,\s]+(.+?)(?:\.|quantities|they need|priced at)', text_original, re.IGNORECASE)
     if match:
         project_name = match.group(1).strip()
