@@ -10,7 +10,7 @@ st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 st.title("🎤 RCP Quote Assistant")
 st.caption("Voice-first • Accurate $305 & $310 pricing")
 
-# ==================== PRICING (Accurate 305 + 310) ====================
+# ==================== PRICING ====================
 PRICING = {
     305: {
         '15': {'CL5': Decimal('23.07')},
@@ -66,7 +66,7 @@ PRICING = {
         '66': {'CL3': Decimal('276.00'), 'CL4': Decimal('289.80'), 'CL5': Decimal('303.60')},
         '72': {'CL3': Decimal('324.00'), 'CL4': Decimal('340.20'), 'CL5': Decimal('356.40')},
     },
-    325: {   # Placeholder - send me the table when ready
+    325: {
         '15': {'CL5': Decimal('23.50')},
         '18': {'CL3': Decimal('28.74'), 'CL5': Decimal('29.84')},
         '24': {'CL3': Decimal('44.89'), 'CL5': Decimal('49.38')},
@@ -228,8 +228,11 @@ if st.button("Generate Professional Quote", type="primary"):
     total = Decimal(0)
     lines = []
 
-    pipe_items = [item for item in items if item.get("type") == "pipe"]
-    flared_items = [item for item in items if item.get("type") == "Flared End"]
+    # Read fresh from session state
+    current_items = st.session_state.get("items", [])
+    
+    pipe_items = [item for item in current_items if item.get("type") == "pipe"]
+    flared_items = [item for item in current_items if item.get("type") == "Flared End"]
     pipe_items.sort(key=lambda x: int(x["size"]))
 
     if pipe_items:
