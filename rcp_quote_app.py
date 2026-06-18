@@ -94,13 +94,13 @@ SAFETY_PRICES = {'15': 1360, '18': 1495, '24': 2670, '30': 4360}
 def round_to_sticks(lf):
     return lf if lf % 8 == 0 else ((lf // 8) + 1) * 8
 
-# ==================== SAFE SESSION STATE ====================
-if "items" not in st.session_state or not isinstance(st.session_state.items, list):
+# ==================== SAFE INITIALIZATION ====================
+st.session_state.setdefault("items", [])
+if not isinstance(st.session_state.items, list):
     st.session_state.items = []
-if "voice_text" not in st.session_state:
-    st.session_state.voice_text = ""
-if "last_voice_text" not in st.session_state:
-    st.session_state.last_voice_text = ""
+
+st.session_state.setdefault("voice_text", "")
+st.session_state.setdefault("last_voice_text", "")
 
 # ==================== VOICE INPUT ====================
 st.subheader("🎤 Speak or Type Quote")
@@ -214,13 +214,18 @@ with col3:
         st.session_state.voice_text = ""
         st.rerun()
 
-# ==================== CURRENT ITEMS ====================
+# ==================== CURRENT ITEMS (Safe Loop) ====================
 st.subheader("Current Items")
-for item in st.session_state.items:
-    if item.get("type") == "pipe":
-        st.write(f"• {item['lf']} LF {item['size']}\" {item['cl']} @ {item['ton']}/ton")
-    else:
-        st.write(f"• {item['qty']} EA {item['size']}\" {item['type']}")
+
+# Extra safety before the loop
+if isinstance(st.session_state.items, list):
+    for item in st.session_state.items:
+        if item.get("type") == "pipe":
+            st.write(f"• {item['lf']} LF {item['size']}\" {item['cl']} @ {item['ton']}/ton")
+        else:
+            st.write(f"• {item['qty']} EA {item['size']}\" {item['type']}")
+else:
+    st.session_state.items = []
 
 if st.button("Clear All"):
     st.session_state.items = []
@@ -234,7 +239,7 @@ if st.button("Generate Professional Quote", type="primary"):
     total = Decimal(0)
     lines = []
 
-    current_items = st.session_state.items
+    current_items = st.session_state.items if isinstance(st.session_state.items, list) else []
     pipe_items = [item for item in current_items if item.get("type") == "pipe"]
     flared_items = [item for item in current_items if item.get("type") == "Flared End"]
     pipe_items.sort(key=lambda x: int(x["size"]))
