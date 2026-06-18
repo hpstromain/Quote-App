@@ -8,7 +8,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Stable version")
+st.caption("Voice-first • Stable & Robust")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -89,12 +89,11 @@ PIPE_WEIGHTS = {
 }
 
 FLARED_PRICES = {'15': 875, '18': 1030, '24': 1725, '30': 1895, '36': 2895, '42': 3895}
-SAFETY_PRICES = {'15': 1360, '18': 1495, '24': 2670, '30': 4360}
 
 def round_to_sticks(lf):
     return lf if lf % 8 == 0 else ((lf // 8) + 1) * 8
 
-# ==================== SAFE INITIALIZATION ====================
+# ==================== ROBUST SESSION STATE ====================
 if "items" not in st.session_state or not isinstance(st.session_state.get("items"), list):
     st.session_state.items = []
 if "voice_text" not in st.session_state:
@@ -102,11 +101,11 @@ if "voice_text" not in st.session_state:
 if "last_voice_text" not in st.session_state:
     st.session_state.last_voice_text = ""
 
-# ==================== VOICE INPUT ====================
+# ==================== UI ====================
 st.subheader("🎤 Speak or Type Quote")
 
 voice_text = st.text_area(
-    "Speak naturally:",
+    "Speak naturally (use 'Process Voice Input' for quick quotes or 'Process Takeoff' when reading plans):",
     value=st.session_state.voice_text,
     height=140,
     key="voice_input"
@@ -129,7 +128,6 @@ with col1:
             
             ton_match = re.search(r'(\d{3})\s*(?:per ton|dollars? per ton|ton|priced)', text)
             detected_ton = int(ton_match.group(1)) if ton_match else 315
-            
             if detected_ton not in PRICING:
                 detected_ton = 315
             
@@ -152,17 +150,13 @@ with col1:
                     elif size == '18' and cl == 'CL4': cl = 'CL5'
                     elif size == '24' and cl == 'CL4': cl = 'CL5'
                     if size in PRICING.get(detected_ton, {}):
-                        # Safe append
-                        if not isinstance(st.session_state.items, list):
-                            st.session_state.items = []
-                        st.session_state.items.append({
-                            "type": "pipe", "size": size, "cl": cl, 
-                            "lf": qty, "ton": detected_ton
-                        })
+                        current_list = st.session_state.items if isinstance(st.session_state.items, list) else []
+                        current_list.append({"type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": detected_ton})
+                        st.session_state.items = current_list
                         added += 1
             
             if added > 0:
-                st.success(f"Added {added} item(s)")
+                st.success(f"Added {added} item(s) — replaced previous quote")
             else:
                 st.warning("No items detected")
 
@@ -176,7 +170,6 @@ with col2:
             added = 0
             ton_match = re.search(r'(\d{3})\s*(?:per ton|dollars? per ton|ton|priced)', text)
             detected_ton = int(ton_match.group(1)) if ton_match else 315
-            
             if detected_ton not in PRICING:
                 detected_ton = 315
             
@@ -199,12 +192,9 @@ with col2:
                     elif size == '18' and cl == 'CL4': cl = 'CL5'
                     elif size == '24' and cl == 'CL4': cl = 'CL5'
                     if size in PRICING.get(detected_ton, {}):
-                        if not isinstance(st.session_state.items, list):
-                            st.session_state.items = []
-                        st.session_state.items.append({
-                            "type": "pipe", "size": size, "cl": cl, 
-                            "lf": qty, "ton": detected_ton
-                        })
+                        current_list = st.session_state.items if isinstance(st.session_state.items, list) else []
+                        current_list.append({"type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": detected_ton})
+                        st.session_state.items = current_list
                         added += 1
             
             if added > 0:
