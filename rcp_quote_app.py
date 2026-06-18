@@ -8,7 +8,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Accurate $305 & $310 pricing")
+st.caption("Voice-first • Fixed state management")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -94,11 +94,11 @@ SAFETY_PRICES = {'15': 1360, '18': 1495, '24': 2670, '30': 4360}
 def round_to_sticks(lf):
     return lf if lf % 8 == 0 else ((lf // 8) + 1) * 8
 
-items = st.session_state.setdefault("items", [])
-
+# Always work directly with session_state
+if "items" not in st.session_state:
+    st.session_state.items = []
 if "voice_text" not in st.session_state:
     st.session_state.voice_text = ""
-
 if "last_voice_text" not in st.session_state:
     st.session_state.last_voice_text = ""
 
@@ -124,7 +124,7 @@ with col1:
         else:
             text = current_text.lower().replace(",", "")
             st.session_state.last_voice_text = current_text
-            st.session_state.items = []
+            st.session_state.items = []   # clear previous
             added = 0
             
             ton_match = re.search(r'(\d{3})\s*(?:per ton|dollars? per ton|ton|priced)', text)
@@ -152,7 +152,10 @@ with col1:
                     elif size == '18' and cl == 'CL4': cl = 'CL5'
                     elif size == '24' and cl == 'CL4': cl = 'CL5'
                     if size in PRICING.get(detected_ton, {}):
-                        items.append({"type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": detected_ton})
+                        st.session_state.items.append({
+                            "type": "pipe", "size": size, "cl": cl, 
+                            "lf": qty, "ton": detected_ton
+                        })
                         added += 1
             
             if added > 0:
@@ -193,7 +196,10 @@ with col2:
                     elif size == '18' and cl == 'CL4': cl = 'CL5'
                     elif size == '24' and cl == 'CL4': cl = 'CL5'
                     if size in PRICING.get(detected_ton, {}):
-                        items.append({"type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": detected_ton})
+                        st.session_state.items.append({
+                            "type": "pipe", "size": size, "cl": cl, 
+                            "lf": qty, "ton": detected_ton
+                        })
                         added += 1
             
             if added > 0:
@@ -210,7 +216,7 @@ with col3:
 
 # ==================== CURRENT ITEMS ====================
 st.subheader("Current Items")
-for item in items:
+for item in st.session_state.items:
     if item.get("type") == "pipe":
         st.write(f"• {item['lf']} LF {item['size']}\" {item['cl']} @ {item['ton']}/ton")
     else:
@@ -228,9 +234,7 @@ if st.button("Generate Professional Quote", type="primary"):
     total = Decimal(0)
     lines = []
 
-    # Read fresh from session state
-    current_items = st.session_state.get("items", [])
-    
+    current_items = st.session_state.items
     pipe_items = [item for item in current_items if item.get("type") == "pipe"]
     flared_items = [item for item in current_items if item.get("type") == "Flared End"]
     pipe_items.sort(key=lambda x: int(x["size"]))
