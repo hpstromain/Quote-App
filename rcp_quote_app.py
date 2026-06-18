@@ -8,7 +8,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Maximum flexibility for plans + field use")
+st.caption("Voice-first • Maximum flexibility")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -91,7 +91,6 @@ with col1:
             text = re.sub(r'(\d+)\s*hundred(?:\s+and)?\s*(\d+)?', 
                          lambda m: str(int(m.group(1))*100 + (int(m.group(2)) if m.group(2) else 0)), text)
             
-            # Multiple flexible pipe patterns
             pipe_patterns = [
                 r'(\d+)\s*(?:feet|ft|lf|linear\s*feet|\'|\")?\s*(?:of)?\s*(\d+)\s*(?:inch|in|")\s*(?:class|cl|CL)?\s*([345]|three|four|five)',
                 r'(\d+)\s*(?:feet|ft)?\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)',
