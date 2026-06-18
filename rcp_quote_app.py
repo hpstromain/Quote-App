@@ -211,16 +211,12 @@ if st.button("Generate Professional Quote", type="primary"):
 
     # ==================== IMPROVED PROJECT NAME EXTRACTION ====================
     project_name = "Project"
-    text_original = st.session_state.voice_text.strip().lower()
+    text_original = st.session_state.voice_text.strip()
     
-    # More flexible patterns
-    match = re.search(r'project name[,\s]*([a-z0-9\s]+?)(?:\.|quantities|they need|priced at)', text_original, re.IGNORECASE)
+    # More flexible and reliable pattern
+    match = re.search(r'project name[,\s]+(.+?)(?:\.|quantities|they need|priced at)', text_original, re.IGNORECASE)
     if match:
-        project_name = match.group(1).strip().title()
-    else:
-        match = re.search(r'project[,\s]+([a-z0-9\s]+?)(?:\.|quantities|they need|priced at)', text_original, re.IGNORECASE)
-        if match:
-            project_name = match.group(1).strip().title()
+        project_name = match.group(1).strip()
 
     email = f"""Good afternoon,
 
