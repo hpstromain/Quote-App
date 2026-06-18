@@ -8,7 +8,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Better project name extraction")
+st.caption("Voice-first • Quick Quote + Takeoff Mode")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -66,76 +66,95 @@ st.subheader("🎤 Speak or Type Quote")
 voice_text = st.text_area(
     "Speak naturally:",
     value=st.session_state.voice_text,
-    height=120,
+    height=140,
     key="voice_input"
 )
 
-col1, col2 = st.columns([3, 1])
+col1, col2, col3 = st.columns([2, 2, 1])
 
 with col1:
     if st.button("Process Voice Input", type="primary", use_container_width=True):
         current_text = st.session_state.get("voice_input", "").strip()
-        
         if not current_text:
             st.warning("Please enter some text first.")
         elif st.session_state.last_voice_text == current_text:
-            st.info("Already processed. Click 'New Quote' if you want to process the same text again.")
+            st.info("Already processed. Click 'New Quote' to start fresh.")
         else:
             text = current_text.lower().replace(",", "")
             st.session_state.last_voice_text = current_text
-            
+            st.session_state.items = []   # ← Replace mode
             added = 0
             ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
             detected_ton = int(ton_match.group(1)) if ton_match else 315
-            
             text = re.sub(r'(\d+)\s*hundred(?:\s+and)?\s*(\d+)?', 
                          lambda m: str(int(m.group(1))*100 + (int(m.group(2)) if m.group(2) else 0)), text)
-            
             clauses = re.split(r'[.!?]+', text)
-            
             for clause in clauses:
                 pipe_pattern = r'(\d+)\s*(?:feet|lf|linear feet)?\s*(?:of)?\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
                 for match in re.finditer(pipe_pattern, clause):
                     qty = int(match.group(1))
                     size = match.group(2)
                     cl_raw = match.group(3)
-                    
                     cl_map = {"three": "3", "four": "4", "five": "5"}
                     cl = f"CL{cl_map.get(cl_raw, cl_raw)}"
-                    
-                    if size == '15':
-                        cl = 'CL5'
-                    elif size == '18' and cl == 'CL4':
-                        cl = 'CL5'
-                    elif size == '24' and cl == 'CL4':
-                        cl = 'CL5'
-                    
+                    if size == '15': cl = 'CL5'
+                    elif size == '18' and cl == 'CL4': cl = 'CL5'
+                    elif size == '24' and cl == 'CL4': cl = 'CL5'
                     if size in PRICING.get(detected_ton, {}):
-                        items.append({
-                            "type": "pipe", "size": size, "cl": cl, 
-                            "lf": qty, "ton": detected_ton
-                        })
+                        items.append({"type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": detected_ton})
                         added += 1
-                
                 flared_pattern = r'(?:one|1)?\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*inch\s*(?:flared|flared end)'
                 flared_match = re.search(flared_pattern, clause)
                 if flared_match:
                     qty = int(flared_match.group(1)) if flared_match.group(1) else 1
                     size = flared_match.group(2)
-                    items.append({
-                        "type": "Flared End",
-                        "size": size,
-                        "qty": qty,
-                        "price": FLARED_PRICES.get(size, 0)
-                    })
+                    items.append({"type": "Flared End", "size": size, "qty": qty, "price": FLARED_PRICES.get(size, 0)})
                     added += 1
-            
             if added > 0:
-                st.success(f"Added {added} item(s)")
+                st.success(f"Added {added} item(s) — replaced previous quote")
             else:
                 st.warning("No items detected.")
 
 with col2:
+    if st.button("Process Takeoff", type="secondary", use_container_width=True):
+        current_text = st.session_state.get("voice_input", "").strip()
+        if not current_text:
+            st.warning("Please enter some text first.")
+        else:
+            text = current_text.lower().replace(",", "")
+            added = 0
+            ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
+            detected_ton = int(ton_match.group(1)) if ton_match else 315
+            text = re.sub(r'(\d+)\s*hundred(?:\s+and)?\s*(\d+)?', 
+                         lambda m: str(int(m.group(1))*100 + (int(m.group(2)) if m.group(2) else 0)), text)
+            clauses = re.split(r'[.!?]+', text)
+            for clause in clauses:
+                pipe_pattern = r'(\d+)\s*(?:feet|lf|linear feet)?\s*(?:of)?\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
+                for match in re.finditer(pipe_pattern, clause):
+                    qty = int(match.group(1))
+                    size = match.group(2)
+                    cl_raw = match.group(3)
+                    cl_map = {"three": "3", "four": "4", "five": "5"}
+                    cl = f"CL{cl_map.get(cl_raw, cl_raw)}"
+                    if size == '15': cl = 'CL5'
+                    elif size == '18' and cl == 'CL4': cl = 'CL5'
+                    elif size == '24' and cl == 'CL4': cl = 'CL5'
+                    if size in PRICING.get(detected_ton, {}):
+                        items.append({"type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": detected_ton})
+                        added += 1
+                flared_pattern = r'(?:one|1)?\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*inch\s*(?:flared|flared end)'
+                flared_match = re.search(flared_pattern, clause)
+                if flared_match:
+                    qty = int(flared_match.group(1)) if flared_match.group(1) else 1
+                    size = flared_match.group(2)
+                    items.append({"type": "Flared End", "size": size, "qty": qty, "price": FLARED_PRICES.get(size, 0)})
+                    added += 1
+            if added > 0:
+                st.success(f"Added {added} item(s) to takeoff")
+            else:
+                st.warning("No items detected.")
+
+with col3:
     if st.button("🆕 New Quote", use_container_width=True):
         st.session_state.items = []
         st.session_state.last_voice_text = ""
@@ -170,12 +189,10 @@ if st.button("Generate Professional Quote", type="primary"):
         total_pounds = sum(Decimal(item["lf"]) * Decimal(PIPE_WEIGHTS.get(item["size"], 0)) for item in pipe_items)
         total_tons = total_pounds / Decimal(2000)
         truckloads = float(total_tons) / 24.0
-        
         if truckloads - int(truckloads) > 0.5:
             lube_buckets = math.ceil(truckloads)
         else:
             lube_buckets = math.floor(truckloads)
-        
         if lube_buckets < 1:
             lube_buckets = 1
     else:
@@ -189,7 +206,6 @@ if st.button("Generate Professional Quote", type="primary"):
         ext = Decimal(rounded) * price
         total += ext
         lines.append(f"{rounded} LF {item['size']}” RCP {item['cl']} @ ${price}/LF = ${ext:,.2f}")
-        
         gaskets = rounded // 8
         if gaskets > 0:
             lines.append(f"{gaskets} EA {item['size']}” Gaskets @ $0.00/EA = $0.00")
@@ -209,11 +225,8 @@ if st.button("Generate Professional Quote", type="primary"):
     st.write("**Freight included in pipe price.**")
     st.write(f"**Total = ${total:,.2f}**")
 
-    # ==================== IMPROVED PROJECT NAME EXTRACTION ====================
     project_name = "Project"
     text_original = st.session_state.voice_text.strip()
-    
-    # More flexible and reliable pattern
     match = re.search(r'project name[,\s]+(.+?)(?:\.|quantities|they need|priced at)', text_original, re.IGNORECASE)
     if match:
         project_name = match.group(1).strip()
