@@ -8,7 +8,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Quick Quote + Takeoff Mode")
+st.caption("Voice-first • Highly flexible pipe parsing")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -84,13 +84,18 @@ with col1:
             st.session_state.last_voice_text = current_text
             st.session_state.items = []
             added = 0
-            ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
+            
+            # Flexible ton detection
+            ton_match = re.search(r'(\d{3})\s*(?:per ton|dollars? per ton|ton)', text)
             detected_ton = int(ton_match.group(1)) if ton_match else 315
+            
             text = re.sub(r'(\d+)\s*hundred(?:\s+and)?\s*(\d+)?', 
                          lambda m: str(int(m.group(1))*100 + (int(m.group(2)) if m.group(2) else 0)), text)
             clauses = re.split(r'[.!?]+', text)
+            
             for clause in clauses:
-                pipe_pattern = r'(\d+)\s*(?:feet|lf|linear feet)?\s*(?:of)?\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
+                # === VERY FLEXIBLE PIPE PATTERN ===
+                pipe_pattern = r'(\d+)\s*(?:feet|ft|lf|linear\s*feet|\'|\")?\s*(?:of)?\s*(\d+)\s*(?:inch|in|")\s*(?:class|cl|CL)?\s*([345]|three|four|five)'
                 for match in re.finditer(pipe_pattern, clause, re.IGNORECASE):
                     qty = int(match.group(1))
                     size = match.group(2)
@@ -103,15 +108,17 @@ with col1:
                     if size in PRICING.get(detected_ton, {}):
                         items.append({"type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": detected_ton})
                         added += 1
-                flared_pattern = r'(?:one|1)?\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*inch\s*(?:flared|flared end)'
+                
+                flared_pattern = r'(?:one|1)?\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*(?:inch|")\s*(?:flared|flared end)'
                 flared_match = re.search(flared_pattern, clause, re.IGNORECASE)
                 if flared_match:
                     qty = int(flared_match.group(1)) if flared_match.group(1) else 1
                     size = flared_match.group(2)
                     items.append({"type": "Flared End", "size": size, "qty": qty, "price": FLARED_PRICES.get(size, 0)})
                     added += 1
+            
             if added > 0:
-                st.success(f"Added {added} item(s) — replaced previous quote")
+                st.success(f"Added {added} item(s)")
             else:
                 st.warning("No items detected.")
 
@@ -123,13 +130,15 @@ with col2:
         else:
             text = current_text.lower().replace(",", "")
             added = 0
-            ton_match = re.search(r'(\d{3})\s*(per ton|dollars? per ton|ton)', text)
+            ton_match = re.search(r'(\d{3})\s*(?:per ton|dollars? per ton|ton)', text)
             detected_ton = int(ton_match.group(1)) if ton_match else 315
+            
             text = re.sub(r'(\d+)\s*hundred(?:\s+and)?\s*(\d+)?', 
                          lambda m: str(int(m.group(1))*100 + (int(m.group(2)) if m.group(2) else 0)), text)
             clauses = re.split(r'[.!?]+', text)
+            
             for clause in clauses:
-                pipe_pattern = r'(\d+)\s*(?:feet|lf|linear feet)?\s*(?:of)?\s*(\d+)\s*inch\s*(?:class\s*)?([345]|three|four|five)'
+                pipe_pattern = r'(\d+)\s*(?:feet|ft|lf|linear\s*feet|\'|\")?\s*(?:of)?\s*(\d+)\s*(?:inch|in|")\s*(?:class|cl|CL)?\s*([345]|three|four|five)'
                 for match in re.finditer(pipe_pattern, clause, re.IGNORECASE):
                     qty = int(match.group(1))
                     size = match.group(2)
@@ -142,13 +151,15 @@ with col2:
                     if size in PRICING.get(detected_ton, {}):
                         items.append({"type": "pipe", "size": size, "cl": cl, "lf": qty, "ton": detected_ton})
                         added += 1
-                flared_pattern = r'(?:one|1)?\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*inch\s*(?:flared|flared end)'
+                
+                flared_pattern = r'(?:one|1)?\s*(?:each)?\s*(\d+)?\s*(15|18|24|30|36|42)\s*(?:inch|")\s*(?:flared|flared end)'
                 flared_match = re.search(flared_pattern, clause, re.IGNORECASE)
                 if flared_match:
                     qty = int(flared_match.group(1)) if flared_match.group(1) else 1
                     size = flared_match.group(2)
                     items.append({"type": "Flared End", "size": size, "qty": qty, "price": FLARED_PRICES.get(size, 0)})
                     added += 1
+            
             if added > 0:
                 st.success(f"Added {added} item(s) to takeoff")
             else:
