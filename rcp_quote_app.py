@@ -8,7 +8,7 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Improved project name extraction")
+st.caption("Voice-first • Better project name extraction")
 
 # ==================== PRICING ====================
 PRICING = {
@@ -211,19 +211,16 @@ if st.button("Generate Professional Quote", type="primary"):
 
     # ==================== IMPROVED PROJECT NAME EXTRACTION ====================
     project_name = "Project"
-    text_original = st.session_state.voice_text.strip()
+    text_original = st.session_state.voice_text.strip().lower()
     
-    patterns = [
-        r'project name[,\s]+(.+?)(?:\.|they need|priced at|quantities)',
-        r'project name is (.+?)(?:\.|they need|priced at)',
-        r'project is (.+?)(?:\.|they need|priced at)',
-    ]
-    
-    for pattern in patterns:
-        match = re.search(pattern, text_original, re.IGNORECASE)
+    # More flexible patterns
+    match = re.search(r'project name[,\s]*([a-z0-9\s]+?)(?:\.|quantities|they need|priced at)', text_original, re.IGNORECASE)
+    if match:
+        project_name = match.group(1).strip().title()
+    else:
+        match = re.search(r'project[,\s]+([a-z0-9\s]+?)(?:\.|quantities|they need|priced at)', text_original, re.IGNORECASE)
         if match:
-            project_name = match.group(1).strip()
-            break
+            project_name = match.group(1).strip().title()
 
     email = f"""Good afternoon,
 
