@@ -95,12 +95,12 @@ def round_to_sticks(lf):
     return lf if lf % 8 == 0 else ((lf // 8) + 1) * 8
 
 # ==================== SAFE INITIALIZATION ====================
-st.session_state.setdefault("items", [])
-if not isinstance(st.session_state.items, list):
+if "items" not in st.session_state or not isinstance(st.session_state.get("items"), list):
     st.session_state.items = []
-
-st.session_state.setdefault("voice_text", "")
-st.session_state.setdefault("last_voice_text", "")
+if "voice_text" not in st.session_state:
+    st.session_state.voice_text = ""
+if "last_voice_text" not in st.session_state:
+    st.session_state.last_voice_text = ""
 
 # ==================== VOICE INPUT ====================
 st.subheader("🎤 Speak or Type Quote")
@@ -152,6 +152,9 @@ with col1:
                     elif size == '18' and cl == 'CL4': cl = 'CL5'
                     elif size == '24' and cl == 'CL4': cl = 'CL5'
                     if size in PRICING.get(detected_ton, {}):
+                        # Safe append
+                        if not isinstance(st.session_state.items, list):
+                            st.session_state.items = []
                         st.session_state.items.append({
                             "type": "pipe", "size": size, "cl": cl, 
                             "lf": qty, "ton": detected_ton
@@ -196,6 +199,8 @@ with col2:
                     elif size == '18' and cl == 'CL4': cl = 'CL5'
                     elif size == '24' and cl == 'CL4': cl = 'CL5'
                     if size in PRICING.get(detected_ton, {}):
+                        if not isinstance(st.session_state.items, list):
+                            st.session_state.items = []
                         st.session_state.items.append({
                             "type": "pipe", "size": size, "cl": cl, 
                             "lf": qty, "ton": detected_ton
@@ -214,10 +219,8 @@ with col3:
         st.session_state.voice_text = ""
         st.rerun()
 
-# ==================== CURRENT ITEMS (Safe Loop) ====================
+# ==================== CURRENT ITEMS ====================
 st.subheader("Current Items")
-
-# Extra safety before the loop
 if isinstance(st.session_state.items, list):
     for item in st.session_state.items:
         if item.get("type") == "pipe":
