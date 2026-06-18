@@ -8,9 +8,9 @@ getcontext().prec = 28
 st.set_page_config(page_title="RCP Quote Assistant", layout="centered")
 
 st.title("🎤 RCP Quote Assistant")
-st.caption("Voice-first • Truckload-based Joint Lube (Corrected)")
+st.caption("Voice-first • Improved project name extraction")
 
-# ==================== FULL PRICING ====================
+# ==================== PRICING ====================
 PRICING = {
     315: {
         '15': {'CL5': Decimal('23.50')},
@@ -40,7 +40,6 @@ PRICING = {
     }
 }
 
-# Weight per linear foot (lbs)
 PIPE_WEIGHTS = {
     '15': 155, '18': 175, '24': 290, '30': 410,
     '36': 563, '42': 860, '48': 1055, '54': 1270,
@@ -167,7 +166,6 @@ if st.button("Generate Professional Quote", type="primary"):
     flared_items = [item for item in items if item.get("type") == "Flared End"]
     pipe_items.sort(key=lambda x: int(x["size"]))
 
-    # === CORRECTED JOINT LUBE CALCULATION ===
     if pipe_items:
         total_pounds = sum(Decimal(item["lf"]) * Decimal(PIPE_WEIGHTS.get(item["size"], 0)) for item in pipe_items)
         total_tons = total_pounds / Decimal(2000)
@@ -211,15 +209,21 @@ if st.button("Generate Professional Quote", type="primary"):
     st.write("**Freight included in pipe price.**")
     st.write(f"**Total = ${total:,.2f}**")
 
+    # ==================== IMPROVED PROJECT NAME EXTRACTION ====================
     project_name = "Project"
     text_original = st.session_state.voice_text.strip()
-    match = re.search(r'project name\s+(?:is\s+)?(.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
-    if match:
-        project_name = match.group(1).strip()
-    else:
-        match = re.search(r'project\s+(?:is\s+)?(.+?)(?:\.|they need|priced at)', text_original, re.IGNORECASE)
+    
+    patterns = [
+        r'project name[,\s]+(.+?)(?:\.|they need|priced at|quantities)',
+        r'project name is (.+?)(?:\.|they need|priced at)',
+        r'project is (.+?)(?:\.|they need|priced at)',
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, text_original, re.IGNORECASE)
         if match:
             project_name = match.group(1).strip()
+            break
 
     email = f"""Good afternoon,
 
